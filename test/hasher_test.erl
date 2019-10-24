@@ -181,17 +181,16 @@ sigma1_test() ->
 
 wt_first16rounds_test() ->
   [
-    ?assertEqual(<<40:64>>, hasher:calculateWt([[<<40:64>>]], 1, 1, [])),
-    ?assertEqual(<<42:64>>, hasher:calculateWt([[<<40:64>>], [<<42:64>>]], 2, 1, [])),
-    ?assertEqual(<<44:64>>, hasher:calculateWt([[<<40:64>>, <<44:64>>], [<<42:64>>]], 1, 2, []))
+    ?assertEqual(<<40:64>>, hasher:calculateWt([<<40:64>>], 1, [])),
+    ?assertEqual(<<42:64>>, hasher:calculateWt([<<40:64>>, <<42:64>>], 2, [])),
+    ?assertEqual(<<44:64>>, hasher:calculateWt([<<40:64>>, <<44:64>>, <<42:64>>], 2, []))
   ].
 
 wt_after16Rounds_test() ->
   [
     ?assertEqual(721631471541944654,
       hasher:calculateWt(
-        [[<<40:64>>], [<<42:64>>]],
-        1,
+        [<<40:64>>, <<42:64>>],
         16,
         [<<54:64>>, % - 16
           <<10:64>>, % - 15

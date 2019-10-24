@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/0, sigma0/1, sigma1/1]).
+-export([sha512/0]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -25,12 +25,13 @@
   sigma1/1,
   %calculateW/3,
   %calculateWForBlock/3
-  calculateWt/4
+  calculateWt/3,
+  calculateFullW/3
 ]).
 -endif.
 
 sha512() ->
-  calculateWt(preprocess(<<"Hello">>), 1, 1, []).
+  calculateWt(preprocess(<<"Hello">>), 1, []).
 %hashRound(preprocess(Message), initialHashValue(), nil, 79).
 
 %%hashRound(I, Message) when I =< length(Message) ->
@@ -42,10 +43,30 @@ sha512() ->
 %%hashBlocks([H|T]) ->
 %%  ok.
 
--spec calculateWt(list(binary()), integer(), integer(), list(binary())) -> binary().
-calculateWt(Message, I, T, _) when T =< 15 ->
-  lists:nth(T, lists:nth(I, Message));
-calculateWt(_, _, T, W) ->
+%%-spec extend(list(binary())) -> binary().
+%%extend([], _) ->
+%%  terminate;
+%%extend(Message, I) when I == 1 ->
+%%  calculateWt(lists:nth(I, Message), ).
+
+-spec digest(list(binary()), integer(), list(binary())) -> binary().
+digest(Message, I, Workers) when I == length(Message) ->
+  Workers;
+digest([MessageBlock | Message], I, Workers) ->
+  calculateFullW(MessageBlock, [], 0),
+  digest(Message, I + 1, Workers).
+
+-spec calculateFullW(list(binary()), list(binary()), integer()) -> list(binary()).
+calculateFullW(MessageBlock, W, T) when T =< 80 ->
+  NextW = [W | calculateWt(MessageBlock, T, W)],
+  calculateFullW(MessageBlock, NextW, T + 1);
+calculateFullW(_, W, _) ->
+  W.
+
+-spec calculateWt(binary(), integer(), list(binary())) -> binary().
+calculateWt(MessageBlock, T, _) when T =< 15 ->
+  lists:nth(T, MessageBlock);
+calculateWt(_, T, W) ->
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
   <<WMinus7:64>> = lists:nth(T - 6, W),
   <<WMinus16:64>> = lists:nth(T - 15, W),
