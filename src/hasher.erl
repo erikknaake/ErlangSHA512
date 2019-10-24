@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/0]).
+-export([sha512/0, sigma0/1, sigma1/1]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -42,13 +42,21 @@ sha512() ->
 %%hashBlocks([H|T]) ->
 %%  ok.
 
+-spec calculateWt(list(binary()), integer(), integer(), list(binary())) -> binary().
 calculateWt(Message, I, T, _) when T =< 15 ->
   lists:nth(T, lists:nth(I, Message));
 calculateWt(_, _, T, W) ->
-  sigma1(lists:nth(T - 2, W)) +
-    lists:nth(T - 7, W) +
-    sigma0(lists:nth(T - 15, W)) +
-    lists:nth(T - 16, W).
+  %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
+  <<WMinus7:64>> = lists:nth(T - 6, W),
+  <<WMinus16:64>> = lists:nth(T - 15, W),
+  io:format("Sigma1(W(T - 2)): ~p~n: ", [sigma1(lists:nth(T - 1, W))]),
+  io:format("Sigma0(W(T - 15)): ~p~n: ", [sigma0(lists:nth(T - 14, W))]),
+  io:format("W(T - 7): ~p~n: ", [WMinus7]),
+  io:format("W(T - 16): ~p~n: ", [WMinus16]),
+  (sigma1(lists:nth(T - 1, W)) +
+    WMinus7 +
+    sigma0(lists:nth(T - 14, W)) +
+    WMinus16).
 
 
 %%
@@ -135,11 +143,12 @@ sum1(X) ->
   <<Y:64>> = X,
   rotateRight(Y, 14) bxor rotateRight(Y, 18) bxor rotateRight(Y, 41).
 
--spec sigma0(binary()) ->integer().
+-spec sigma0(binary()) -> integer().
 sigma0(X) ->
   <<Y:64>> = X,
   rotateRight(Y, 1) bxor rotateRight(Y, 8) bxor shiftRight(Y, 7).
 
+-spec sigma1(binary()) -> integer().
 sigma1(X) ->
   <<Y:64>> = X,
   rotateRight(Y, 19) bxor rotateRight(Y, 61) bxor shiftRight(Y, 6).
