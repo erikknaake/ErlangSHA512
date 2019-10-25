@@ -27,11 +27,13 @@
   %calculateWForBlock/3
   calculateWt/3,
   calculateFullW/3
-]).
+  ,digest/2,
+  calculateWorkers/3,
+  initialWorkers/0]).
 -endif.
 
 sha512() ->
-  calculateWt(preprocess(<<"Hello">>), 1, []).
+  digest(preprocess(<<"Hello">>), initialWorkers()).
 %hashRound(preprocess(Message), initialHashValue(), nil, 79).
 
 %%hashRound(I, Message) when I =< length(Message) ->
@@ -49,35 +51,83 @@ sha512() ->
 %%extend(Message, I) when I == 1 ->
 %%  calculateWt(lists:nth(I, Message), ).
 
--spec digest(list(binary()), integer(), list(binary())) -> binary().
-digest(Message, I, Workers) when I == length(Message) ->
+%%-spec digest(list(binary()), integer(), list(binary())) -> binary().
+%%digest(Message, I, Workers) when I == length(Message) ->
+%%  Workers;
+%%digest([MessageBlock | Message], I, Workers) ->
+%%  calculateFullW(MessageBlock, [], 0),
+%%  digest(Message, I + 1, Workers).
+
+-spec digest(list(list(binary())), list(binary())) -> binary().
+digest(Message, InitialWorkers) ->
+%%  io:format("Message: ~p~n", [Message]),
+  State = {InitialWorkers},
+  lists:map(
+      fun(MessagePart) ->
+        lists:foldl(
+          expand(MessagePart, State),
+            State,
+            MessagePart)
+      end,
+    Message).
+
+-spec expand(list(binary()), list(binary())) -> {binary(), list(binary())}.
+expand(MessageBlock, PreviousWorkers) ->
+%%  io:format("Message bloack: ~p~n", [MessageBlock]),
+  W = calculateFullW(MessageBlock, [], 0),
+  NewWorkers = calculateWorkers(PreviousWorkers, W, 0),
+  {W, NewWorkers}.
+
+-spec calculateWorkers(list(binary()), list(binary()), integer()) -> list(binary()).
+calculateWorkers(Workers, _, 79) ->
   Workers;
-digest([MessageBlock | Message], I, Workers) ->
-  calculateFullW(MessageBlock, [], 0),
-  digest(Message, I + 1, Workers).
+calculateWorkers(Workers, W, T) ->
+ calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
+
+-spec calculateNextWorkers(list(), list(), list(), integer()) -> list().
+calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
+  T1 = H + sum1(E) + ch(E, F, G) + lists:nth(T, K) + lists:nth(T, W),
+  T2 = sum0(A) + maj(A, B, C),
+  [
+    T1 + T2,
+    A,
+    B,
+    C,
+    D + T1,
+    E,
+    F,
+    G,
+    H
+  ].
 
 -spec calculateFullW(list(binary()), list(binary()), integer()) -> list(binary()).
-calculateFullW(MessageBlock, W, T) when T =< 80 ->
-  NextW = [W | calculateWt(MessageBlock, T, W)],
-  calculateFullW(MessageBlock, NextW, T + 1);
-calculateFullW(_, W, _) ->
-  W.
+calculateFullW(_, W, 80) ->
+  W;
+calculateFullW(MessageBlock, W, T) ->
+  calculateFullW(MessageBlock,
+    W ++ [calculateWt(MessageBlock, T, W)],
+    T + 1
+  ).
 
 -spec calculateWt(binary(), integer(), list(binary())) -> binary().
 calculateWt(MessageBlock, T, _) when T =< 15 ->
   lists:nth(T, MessageBlock);
 calculateWt(_, T, W) ->
+%%  io:format("T: ~p~n", [T]),
+%%  io:format("W: ~p~n", [W]),
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
   <<WMinus7:64>> = lists:nth(T - 6, W),
   <<WMinus16:64>> = lists:nth(T - 15, W),
-  io:format("Sigma1(W(T - 2)): ~p~n: ", [sigma1(lists:nth(T - 1, W))]),
-  io:format("Sigma0(W(T - 15)): ~p~n: ", [sigma0(lists:nth(T - 14, W))]),
-  io:format("W(T - 7): ~p~n: ", [WMinus7]),
-  io:format("W(T - 16): ~p~n: ", [WMinus16]),
-  (sigma1(lists:nth(T - 1, W)) +
+  <<WMinus2:64>> = lists:nth(T - 1, W),
+  <<WMinus15:64>> = lists:nth(T - 14, W),
+  %%  io:format("Sigma1(W(T - 2)): ~p~n: ", [sigma1(lists:nth(T - 1, W))]),
+%%  io:format("Sigma0(W(T - 15)): ~p~n: ", [sigma0(lists:nth(T - 14, W))]),
+%%  io:format("W(T - 7): ~p~n: ", [WMinus7]),
+%%  io:format("W(T - 16): ~p~n: ", [WMinus16]),
+  <<(sigma1(WMinus2) +
     WMinus7 +
-    sigma0(lists:nth(T - 14, W)) +
-    WMinus16).
+    sigma0(WMinus15) +
+    WMinus16):64>>.
 
 
 %%
@@ -123,16 +173,18 @@ calculateWt(_, T, W) ->
 %%
 %%  hashRound(PreProcessedMessage, nil, Workers, Count + 1).
 
-initialHashValue() ->
-  [16#6a09e667f3bcc908, 16#bb67ae8584caa73b,
-    16#3c6ef372fe94f82b, 16#a54ff53a5f1d36f1,
-    16#510e527fade682d1, 16#9b05688c2b3e6c1f,
-    16#1f83d9abfb41bd6b, 16#5be0cd19137e2179].
+-spec initialWorkers() -> list(binary).
+initialWorkers() ->
+  [<<16#22312194FC2BF72C:64>>, <<16#9F555FA3C84C64C2:64>>,
+    <<16#2393B86B6F53B151:64>>, <<16#963877195940EABD:64>>,
+    <<16#96283EE2A88EFFE3:64>>, <<16#BE5E1E2553863992:64>>,
+    <<16#2B0199FC2C85B8AA:64>>, <<16#0EB72DDC81C52CA2:64>>].
 
 -spec rotateLeft(binary(), integer()) -> integer().
 rotateLeft(WordToRotate, RotateAmount) ->
   shiftLeft(WordToRotate, RotateAmount) bor shiftRight(WordToRotate, bit_size(<<WordToRotate>>) - RotateAmount).
 
+-spec rotateRight(integer(), integer()) -> integer().
 rotateRight(V, Count) ->
   Rest = 64 - Count,
   <<Top:Rest/unsigned, Bottom:Count/unsigned>> = <<V:64/big-unsigned>>,
@@ -154,24 +206,20 @@ ch(X, Y, Z) ->
 maj(X, Y, Z) ->
   (X band Y) bxor (X band Z) bxor (Y band Z).
 
--spec sum0(binary()) -> integer().
-sum0(X) ->
-  <<Y:64/big-unsigned>> = X,
+-spec sum0(integer()) -> integer().
+sum0(Y) ->
   (rotateRight(Y, 28) bxor rotateRight(Y, 34)) bxor rotateRight(Y, 39).
 
--spec sum1(binary()) -> integer().
-sum1(X) ->
-  <<Y:64>> = X,
+-spec sum1(integer()) -> integer().
+sum1(Y) ->
   rotateRight(Y, 14) bxor rotateRight(Y, 18) bxor rotateRight(Y, 41).
 
--spec sigma0(binary()) -> integer().
-sigma0(X) ->
-  <<Y:64>> = X,
+-spec sigma0(integer()) -> integer().
+sigma0(Y) ->
   rotateRight(Y, 1) bxor rotateRight(Y, 8) bxor shiftRight(Y, 7).
 
--spec sigma1(binary()) -> integer().
-sigma1(X) ->
-  <<Y:64>> = X,
+-spec sigma1(integer()) -> integer().
+sigma1(Y) ->
   rotateRight(Y, 19) bxor rotateRight(Y, 61) bxor shiftRight(Y, 6).
 
 preprocess(<<Message/binary-unsigned-big>>) ->
@@ -221,12 +269,6 @@ mod(X, Y) when X < 0 ->
   Y + X rem Y;
 mod(0, _) ->
   0.
-
-% parseToMessageBlocks() ->
-% 	.
-
-% initialHashValue() ->
-% 	.
 
 % % Constaints defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
 kConstants() ->
