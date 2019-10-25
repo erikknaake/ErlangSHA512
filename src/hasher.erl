@@ -73,7 +73,7 @@ digest(Message, InitialWorkers) ->
 
 -spec expand(list(binary()), list(binary())) -> {binary(), list(binary())}.
 expand(MessageBlock, PreviousWorkers) ->
-%%  io:format("Message bloack: ~p~n", [MessageBlock]),
+%%  io:format("Message block: ~p~n", [MessageBlock]),
   W = calculateFullW(MessageBlock, [], 0),
   NewWorkers = calculateWorkers(PreviousWorkers, W, 0),
   {W, NewWorkers}.
@@ -116,10 +116,10 @@ calculateWt(_, T, W) ->
 %%  io:format("T: ~p~n", [T]),
 %%  io:format("W: ~p~n", [W]),
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
-  <<WMinus7:64>> = lists:nth(T - 6, W),
-  <<WMinus16:64>> = lists:nth(T - 15, W),
   <<WMinus2:64>> = lists:nth(T - 1, W),
+  <<WMinus7:64>> = lists:nth(T - 6, W),
   <<WMinus15:64>> = lists:nth(T - 14, W),
+  <<WMinus16:64>> = lists:nth(T - 15, W),
   %%  io:format("Sigma1(W(T - 2)): ~p~n: ", [sigma1(lists:nth(T - 1, W))]),
 %%  io:format("Sigma0(W(T - 15)): ~p~n: ", [sigma0(lists:nth(T - 14, W))]),
 %%  io:format("W(T - 7): ~p~n: ", [WMinus7]),
@@ -225,7 +225,8 @@ sigma1(Y) ->
 preprocess(<<Message/binary-unsigned-big>>) ->
   parse(padd(Message)).
 
-% Parses the padded message into blocks of 1024 bits (128 bytes) made up of blocks of 64 bits (8 bytes)
+% Parses the padded message into blocks of 1024 bits (128 bytes) made up of 16 blocks of 64 bits (8 bytes)
+-spec parse(binary()) -> list(list(binary())).
 parse(<<PaddedMessage/binary-unsigned-big>>) ->
   [splitToNByteBlocks(X, 8) || X <- splitToNByteBlocks(PaddedMessage, 128)].
 

@@ -99,6 +99,55 @@ splitToNByteBlocks_test() ->
     ?assertEqual([<<2#11110000>>, <<2#10101010>>, <<2#00000000>>, <<2#11111111>>], hasher:splitToNByteBlocks(<<2#11110000101010100000000011111111:32>>, 1))
   ].
 
+parse_length_test() ->
+  [
+    ?assertEqual(2, length(hasher:parse(<<100:2048>>))), % Validate number of blocks
+    ?assertEqual(16, length(lists:nth(1, hasher:parse(<<100:2048>>)))), % validate number of words inside each block
+    ?assertEqual(64, bit_size(lists:nth(1, lists:nth(1, hasher:parse(<<100:2048>>))))) % validate number of bits inside each word
+  ].
+
+parse_test() ->
+  [
+    ?assertEqual([
+      [
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>
+      ],
+      [
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<0:64>>,
+        <<100:64>>
+      ]
+    ], hasher:parse(<<100:2048>>))
+  ].
+
 bitshiftRight_test() ->
   [
     ?assertEqual(2#00101010, hasher:shiftRight(2#01010101, 1)),
@@ -200,34 +249,29 @@ wt_after16Rounds_test() ->
       ))
   ].
 
-fullW_test() ->
-  [
-    ?assertEqual([],
-      hasher:calculateFullW(
-        [
-          <<1:64>>,
-          <<2:64>>,
-          <<3:64>>,
-          <<4:64>>,
-          <<5:64>>,
-          <<6:64>>,
-          <<7:64>>,
-          <<8:64>>,
-          <<9:64>>,
-          <<10:64>>,
-          <<11:64>>,
-          <<12:64>>,
-          <<13:64>>,
-          <<14:64>>,
-          <<15:64>>,
-          <<16:64>>
-        ],
-        hasher:initialWorkers(),
-        1)
-    )
-  ].
-
-%%parse_test() ->
+%%fullW_test() ->
 %%  [
-%%
+%%    ?assertEqual([],
+%%      hasher:calculateFullW(
+%%        [
+%%          <<1:64>>,
+%%          <<2:64>>,
+%%          <<3:64>>,
+%%          <<4:64>>,
+%%          <<5:64>>,
+%%          <<6:64>>,
+%%          <<7:64>>,
+%%          <<8:64>>,
+%%          <<9:64>>,
+%%          <<10:64>>,
+%%          <<11:64>>,
+%%          <<12:64>>,
+%%          <<13:64>>,
+%%          <<14:64>>,
+%%          <<15:64>>,
+%%          <<16:64>>
+%%        ],
+%%        hasher:initialWorkers(),
+%%        1)
+%%    )
 %%  ].
