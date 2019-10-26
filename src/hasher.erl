@@ -101,7 +101,7 @@ calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
   ].
 
 -spec calculateFullW(list(binary()), list(binary()), integer()) -> list(binary()).
-calculateFullW(_, W, 80) ->
+calculateFullW(_, W, 81) ->
   W;
 calculateFullW(MessageBlock, W, T) ->
   calculateFullW(MessageBlock,
