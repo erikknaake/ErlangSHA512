@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/0]).
+-export([sha512/0, sum1/1, ch/3, sum0/1, maj/3]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -27,9 +27,9 @@
   %calculateWForBlock/3
   calculateWt/3,
   calculateFullW/3
-  ,digest/2,
+  , digest/2,
   calculateWorkers/3,
-  initialWorkers/0]).
+  initialWorkers/0, kConstants/0, calculateNextWorkers/4]).
 -endif.
 
 sha512() ->
@@ -79,7 +79,7 @@ expand(MessageBlock, PreviousWorkers) ->
   {W, NewWorkers}.
 
 -spec calculateWorkers(list(binary()), list(binary()), integer()) -> list(binary()).
-calculateWorkers(Workers, _, 79) ->
+calculateWorkers(Workers, _, 80) ->
   Workers;
 calculateWorkers(Workers, W, T) ->
  calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
@@ -96,8 +96,7 @@ calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
     D + T1,
     E,
     F,
-    G,
-    H
+    G
   ].
 
 -spec calculateFullW(list(binary()), list(binary()), integer()) -> list(binary()).

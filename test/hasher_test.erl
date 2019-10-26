@@ -249,7 +249,7 @@ wt_after16Rounds_test() ->
       ))
   ].
 
-fullW_test() ->
+fullW_length_test() ->
   [
     ?assertEqual(80,
       length(hasher:calculateFullW(
@@ -274,4 +274,14 @@ fullW_test() ->
         [],
         1)
     ))
+  ].
+
+calculate_workers_last_iter_test() ->
+  [
+    ?assertEqual([16, 31], hasher:calculateWorkers([16, 31], hasher:kConstants(), 80))
+  ].
+
+calculate_next_workers_test() ->
+  [
+    ?assertEqual([4800678499904433735, 1, 2, 3, 4800678430077660744, 5, 6, 7], hasher:calculateNextWorkers([1, 2, 3, 4, 5, 6, 7, 8], hasher:kConstants(), [20], 1))
   ].
