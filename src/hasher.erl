@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/0, sum1/1, ch/3, sum0/1, maj/3]).
+-export([sha512/0]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -23,13 +23,11 @@
   sum1/1,
   sigma0/1,
   sigma1/1,
-  %calculateW/3,
-  %calculateWForBlock/3
   calculateWt/3,
   calculateFullW/3
   , digest/2,
   calculateWorkers/3,
-  initialWorkers/0, kConstants/0, calculateNextWorkers/4]).
+  initialWorkers/0, kConstants/0, calculateNextWorkers/4, compress/1, appendBits/2]).
 -endif.
 
 sha512() ->
@@ -62,14 +60,26 @@ sha512() ->
 digest(Message, InitialWorkers) ->
 %%  io:format("Message: ~p~n", [Message]),
   State = {InitialWorkers},
-  lists:map(
-      fun(MessagePart) ->
+  %lists:map(
+   %   fun(Message) ->
         lists:foldl(
-          expand(MessagePart, State),
+          expand(Message, State),
             State,
-            MessagePart)
-      end,
-    Message).
+            Message)
+    %  end,
+  %  Message).
+        .
+
+-spec compress(list(integer())) -> integer().
+compress(Workers) ->
+  lists:foldl(fun hasher:appendBits/2, <<>>, Workers).
+
+
+appendBits(Value, Accumulator) ->
+  appendBits(Value, Accumulator, 64).
+appendBits(Value, Accumulator, BitSize) ->
+  BinaryValue = <<Value:BitSize>>,
+  <<Accumulator/big-binary, BinaryValue/big-binary>>.
 
 -spec expand(list(binary()), list(binary())) -> {binary(), list(binary())}.
 expand(MessageBlock, PreviousWorkers) ->
@@ -112,65 +122,15 @@ calculateFullW(MessageBlock, W, T) ->
 calculateWt(MessageBlock, T, _) when T =< 15 ->
   lists:nth(T, MessageBlock);
 calculateWt(_, T, W) ->
-%%  io:format("T: ~p~n", [T]),
-%%  io:format("W: ~p~n", [W]),
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
   <<WMinus2:64>> = lists:nth(T - 1, W),
   <<WMinus7:64>> = lists:nth(T - 6, W),
   <<WMinus15:64>> = lists:nth(T - 14, W),
   <<WMinus16:64>> = lists:nth(T - 15, W),
-  %%  io:format("Sigma1(W(T - 2)): ~p~n: ", [sigma1(lists:nth(T - 1, W))]),
-%%  io:format("Sigma0(W(T - 15)): ~p~n: ", [sigma0(lists:nth(T - 14, W))]),
-%%  io:format("W(T - 7): ~p~n: ", [WMinus7]),
-%%  io:format("W(T - 16): ~p~n: ", [WMinus16]),
   <<(sigma1(WMinus2) +
     WMinus7 +
     sigma0(WMinus15) +
     WMinus16):64>>.
-
-
-%%
-%%calculateW(Message, I, W) when I =< length(Message) ->
-%%  io:format("Message: ~p~nI: ~p~nW: ~p~n", [Message, I, W]),
-%%  calculateW(Message, I + 1, [W | calculateWForBlock(lists:nth(I, Message), 1, [])]).
-%%
-%%calculateWForBlock(MessageBlock, 80, W) ->
-%%  io:format("MessageBlock: ~p~nT: ~p~nW: ~p~n", [MessageBlock, 80, W]),
-%%  W;
-%%
-%%calculateWForBlock(MessageBlock, T, W) when T =< 15 ->
-%%  io:format("MessageBlock: ~p~nT: ~p~nW: ~p~n", [MessageBlock, T, W]),
-%%  calculateWForBlock(MessageBlock,
-%%    T + 1,
-%%    W ++
-%%      lists:nth(T, MessageBlock)
-%%    );
-%%
-%%calculateWForBlock(MessageBlock, T, W) when T > 15 ->
-%%  io:format("MessageBlock: ~p~nT: ~p~nW: ~p~n", [MessageBlock, T, W]),
-%%  calculateWForBlock(MessageBlock,
-%%    T + 1,
-%%    W ++
-%%      sigma1(lists:nth(T - 2, W)) +
-%%        lists:nth(T - 7, W) +
-%%        sigma0(lists:nth(T - 15, W) +
-%%          lists:nth(T - 16, W))
-%%    ). %TODO: check whether or not nth is 0 based
-
-%%% Final hash round
-%%hashRound(PreProcessedMessage, Workers, PreviousWorkers, 79) ->
-%%  lists:zipwith(fun(X, Y) -> X + Y end, Workers, PreviousWorkers).
-%%
-%%hashRound(PreProcessedMessage, Workers, PreviousWorkers, Count) ->
-%%  T1 = nth(1, PreviousWorkers) +
-%%    sum1(nth(5, PreviousWorkers)) +
-%%    ch(nth(5, PreviousWorkers), nth(6, PreviousWorkers), nth(7, PreviousWorkers)) +
-%%    nth(Count, kConstants()) +
-%%    wT(Count),
-%%  T2 = sum0(nth(1, PreviousWorkers)) +
-%%    maj(nth(1, PreviousWorkers), nth(2, PreviousWorkers), nth(3, PreviousWorkers)),
-%%
-%%  hashRound(PreProcessedMessage, nil, Workers, Count + 1).
 
 -spec initialWorkers() -> list(binary).
 initialWorkers() ->

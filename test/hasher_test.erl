@@ -285,3 +285,31 @@ calculate_next_workers_test() ->
   [
     ?assertEqual([4800678499904433735, 1, 2, 3, 4800678430077660744, 5, 6, 7], hasher:calculateNextWorkers([1, 2, 3, 4, 5, 6, 7, 8], hasher:kConstants(), [20], 1))
   ].
+
+appendBits_test() ->
+  [
+    ?assertEqual(<<2:64, 1:64>>, hasher:appendBits(1, <<2:64>>))
+  ].
+
+appendBits_to_empty_test() ->
+  [
+    ?assertEqual(<<2:64>>, hasher:appendBits(2, <<>>))
+  ].
+
+compress_test() ->
+  [
+    ?assertEqual(<<4800678499904433735:64,
+      1:64,
+      2:64,
+      3:64,
+      4800678430077660744:64,
+      5:64,
+      6:64,
+      7:64>>,
+      hasher:compress([4800678499904433735, 1, 2, 3, 4800678430077660744, 5, 6, 7]))
+  ].
+%%
+%%digest_test() ->
+%%  [
+%%    ?assertEqual([], hasher:digest(hasher:preprocess(<<"Hello">>), []))
+%%  ].
