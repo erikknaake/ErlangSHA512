@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/0]).
+-export([sha512/1]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -32,11 +32,16 @@
   calculateNextWorkers/4,
   compress/1,
   appendBits/2,
-  hash/1, hash_round/2, binaryListToIntegerList/1]).
+  hash/1,
+  hash_round/2,
+  binaryListToIntegerList/1]).
 -endif.
 
-sha512() ->
-  compress(hash(<<"Hello">>)).
+-spec sha512(binary()) -> binary().
+sha512(Message) ->
+  A = compress(hash(Message)),
+  io:format("A: ~p~n", [A]),
+  A.
 
 -spec hash(binary()) -> list(binary()).
 hash(Message) ->
@@ -44,12 +49,8 @@ hash(Message) ->
 
 -spec digest(list(list(binary())), list(binary())) -> binary().
 digest(Message, InitialWorkers) ->
-%%  lists:map(
-%%    fun(MessageBlock) ->
-      lists:foldl(fun hash_round/2, InitialWorkers, Message)
-%%    end,
-%%    Message).
-      .
+      lists:foldl(fun hash_round/2, InitialWorkers, Message).
+
 -spec compress(list(integer())) -> integer().
 compress(Workers) ->
   lists:foldl(fun appendBits/2, <<>>, Workers).
@@ -66,10 +67,10 @@ appendBits(Value, Accumulator, BitSize) ->
 -spec hash_round(list(binary()), list(binary())) -> list(binary()).
 hash_round(MessageBlock, PreviousWorkers) ->
   W = calculateFullW(MessageBlock, [], 1),
-  calculateWorkers(binaryListToIntegerList(PreviousWorkers), W, 1).
+  calculateWorkers(PreviousWorkers, W, 1).
 
 -spec calculateWorkers(list(binary()), list(integer()), integer()) -> list(binary()).
-calculateWorkers(Workers, _, 80) ->
+calculateWorkers(Workers, _, 81) ->
   Workers;
 calculateWorkers(Workers, W, T) ->
  calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
@@ -119,12 +120,18 @@ calculateWt(_, T, W) ->
     sigma0(WMinus15) +
     WMinus16):64>>.
 
+% Constants defined in chapter 5.3.5
 -spec initialWorkers() -> list(binary()).
 initialWorkers() ->
-  [<<16#22312194FC2BF72C:64>>, <<16#9F555FA3C84C64C2:64>>,
-    <<16#2393B86B6F53B151:64>>, <<16#963877195940EABD:64>>,
-    <<16#96283EE2A88EFFE3:64>>, <<16#BE5E1E2553863992:64>>,
-    <<16#2B0199FC2C85B8AA:64>>, <<16#0EB72DDC81C52CA2:64>>].
+  [
+    16#6a09e667f3bcc908,
+    16#bb67ae8584caa73b,
+    16#3c6ef372fe94f82b,
+    16#a54ff53a5f1d36f1,
+    16#510e527fade682d1,
+    16#9b05688c2b3e6c1f,
+    16#1f83d9abfb41bd6b,
+    16#5be0cd19137e2179].
 
 -spec rotateLeft(binary(), integer()) -> integer().
 rotateLeft(WordToRotate, RotateAmount) ->
@@ -210,6 +217,8 @@ numberOfZeroesToAdd(MessageLength) ->
 lengthPadd(<<ZeroPaddedMessage/bitstring-unsigned-big>>, MessageLength) ->
   <<ZeroPaddedMessage/bitstring-unsigned-big, <<MessageLength:128>>/bitstring-unsigned-big>>.
 
+% implements the modulo operation
+-spec mod(integer(), integer()) -> integer().
 mod(X, Y) when X > 0 ->
   X rem Y;
 mod(X, Y) when X < 0 ->
@@ -217,7 +226,8 @@ mod(X, Y) when X < 0 ->
 mod(0, _) ->
   0.
 
-% % Constaints defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
+% Constaints defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
+-spec kConstants() -> list(integer()).
 kConstants() ->
   [
     16#428a2f98d728ae22, 16#7137449123ef65cd, 16#b5c0fbcfec4d3b2f, 16#e9b5dba58189dbbc,

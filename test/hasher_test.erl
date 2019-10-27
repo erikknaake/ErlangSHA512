@@ -305,8 +305,22 @@ fullW_type_test() ->
 
 calculate_workers_last_iter_test() ->
   [
-    ?assertEqual([16, 31], hasher:calculateWorkers([16, 31], hasher:kConstants(), 80))
+    ?assertEqual([16, 31], hasher:calculateWorkers([16, 31], hasher:kConstants(), 81))
   ].
+
+calculate_workers_test() ->
+  [
+    ?assertEqual([24139650742412522452,6908715048216492876,1,2,
+      17491027210091438801,6908714978389719885,5,6], hasher:calculateWorkers([1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9,
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+      20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+      30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+      40, 41,42, 43, 44, 45, 46, 47, 48, 49,
+      50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+      60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+      70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80], 79))
+  ].
+
 
 calculate_next_workers_test() ->
   [
@@ -346,12 +360,18 @@ binaryListToIntegerListType_test() ->
     ?assertEqual(true, is_integer(lists:nth(1, hasher:binaryListToIntegerList([<<1:64>>, <<2:64>>, <<3:64>>]))))
   ].
 
-digest_test() ->
+sha512_length_test() ->
   [
-    ?assertEqual([], hasher:digest(hasher:preprocess(<<"Hello">>), hasher:initialWorkers()))
+    ?assertEqual(512, bit_size(hasher:sha512(<<"Hello">>)))
   ].
 
-%%hash_test() ->
+% Test if binary string are equal to string as you would expect them to be
+hex_and_binary_strings_should_equal_test() ->
+  [
+    ?assertEqual(<<16#48656c6c6f:40>>, <<"Hello">>)
+  ].
+
+%%sha512_test() ->
 %%  [
-%%
+%%    ?assertEqual(<<16#3615F80C9D293ED7402687F94B22D58E529B8CC7916F8FAC7FDDF7FBD5AF4CF777D3D795A7A00A16BF7E7F3FB9561EE9BAAE480DA9FE7A18769E71886B03F315:512>>, hasher:sha512(<<"Hello">>))
 %%  ].
