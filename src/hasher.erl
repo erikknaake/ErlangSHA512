@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/1]).
+-export([sha512/1, temp/0]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -26,16 +26,31 @@
   calculateWt/3,
   calculateFullW/3,
   digest/2,
-  calculateWorkers/3,
+  calculateWorkers/4,
   initialWorkers/0,
   kConstants/0,
   calculateNextWorkers/4,
   compress/1,
   appendBits/2,
   hash/1,
-  hash_round/2,
+  hash_block/2,
   binaryListToIntegerList/1]).
 -endif.
+
+temp() ->
+  calculateNextWorkers([24139650742412522452,6908715048216492876,1,2,
+    17491027210091438801,6908714978389719885,5,6]
+    , kConstants(), [
+    1, 2, 3, 4, 5, 6, 7, 8, 9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+    40, 41,42, 43, 44, 45, 46, 47, 48, 49,
+    50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+    60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+    70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
+    80
+  ], 80).
 
 -spec sha512(binary()) -> binary().
 sha512(Message) ->
@@ -49,7 +64,7 @@ hash(Message) ->
 
 -spec digest(list(list(binary())), list(binary())) -> binary().
 digest(Message, InitialWorkers) ->
-      lists:foldl(fun hash_round/2, InitialWorkers, Message).
+      lists:foldl(fun hash_block/2, InitialWorkers, Message).
 
 -spec compress(list(integer())) -> integer().
 compress(Workers) ->
@@ -64,16 +79,19 @@ appendBits(Value, Accumulator, BitSize) ->
   BinaryValue = <<Value:BitSize>>,
   <<Accumulator/big-binary, BinaryValue/big-binary>>.
 
--spec hash_round(list(binary()), list(binary())) -> list(binary()).
-hash_round(MessageBlock, PreviousWorkers) ->
-  W = calculateFullW(MessageBlock, [], 1),
-  calculateWorkers(PreviousWorkers, W, 1).
+-spec hash_block(list(binary()), list(binary())) -> list(binary()).
+hash_block(MessageBlock, Workers) ->
+  io:format("hashblock: ~p~n", [Workers]),
+  calculateWorkers(Workers, [], calculateFullW(MessageBlock, [], 1), 1).
 
--spec calculateWorkers(list(binary()), list(integer()), integer()) -> list(binary()).
-calculateWorkers(Workers, _, 81) ->
-  Workers;
-calculateWorkers(Workers, W, T) ->
- calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
+calculateIntermediateHashValue([A, B, C, D, E, F, G, H], [H0, H1, H2, H3, H4, H5, H6, H7]) ->
+  [A + H0, B + H1, C + H2, D + H3, E + H4, F + H5, G + H6, H + H7].
+
+-spec calculateWorkers(list(binary()), list(binary()), list(integer()), integer()) -> list(binary()).
+calculateWorkers(Workers, PreviousWorkers, _, 81) ->
+  calculateIntermediateHashValue(Workers, PreviousWorkers);
+calculateWorkers(Workers, _, W, T) ->
+ calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), Workers, W, T + 1).
 
 -spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
 calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->

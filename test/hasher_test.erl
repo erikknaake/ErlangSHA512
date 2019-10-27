@@ -148,6 +148,26 @@ parse_test() ->
     ], hasher:parse(<<100:2048>>))
   ].
 
+preprocess_test() ->
+  [
+    ?assertEqual([[<<97,98,99,128,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,0>>,
+      <<0,0,0,0,0,0,0,24>>]], hasher:preprocess(<<2#01100001, 2#01100010, 2#01100011>>))
+  ].
+
 bitshiftRight_test() ->
   [
     ?assertEqual(2#00101010, hasher:shiftRight(2#01010101, 1)),
@@ -344,13 +364,13 @@ fullW_test() ->
 
 calculate_workers_last_iter_test() ->
   [
-    ?assertEqual([16, 31], hasher:calculateWorkers([16, 31], hasher:kConstants(), 81))
+    ?assertEqual([2, 4, 6, 8, 10, 12, 14, 16], hasher:calculateWorkers([1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8], hasher:kConstants(), 81))
   ].
 
 calculate_workers_test() ->
   [
-    ?assertEqual([24139650742412522452,6908715048216492876,1,2,
-      17491027210091438801,6908714978389719885,5,6], hasher:calculateWorkers([1, 2, 3, 4, 5, 6, 7, 8],
+    ?assertEqual([31048365790629015328, 6908715048216492877, 3, 5, 24399742188481158686, 6908714978389719890, 11, 13],
+      hasher:calculateWorkers([1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8],
       [
         1, 2, 3, 4, 5, 6, 7, 8, 9,
         10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -415,7 +435,7 @@ hex_and_binary_strings_should_equal_test() ->
     ?assertEqual(<<16#48656c6c6f:40>>, <<"Hello">>)
   ].
 
-%%sha512_test() ->
-%%  [
-%%    ?assertEqual(<<16#3615F80C9D293ED7402687F94B22D58E529B8CC7916F8FAC7FDDF7FBD5AF4CF777D3D795A7A00A16BF7E7F3FB9561EE9BAAE480DA9FE7A18769E71886B03F315:512>>, hasher:sha512(<<"Hello">>))
-%%  ].
+sha512_test() ->
+  [
+    ?assertEqual(<<16#3615F80C9D293ED7402687F94B22D58E529B8CC7916F8FAC7FDDF7FBD5AF4CF777D3D795A7A00A16BF7E7F3FB9561EE9BAAE480DA9FE7A18769E71886B03F315:512>>, hasher:sha512(<<"Hello">>))
+  ].
