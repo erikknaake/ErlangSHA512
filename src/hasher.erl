@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/1, temp/0]).
+-export([sha512/1]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -34,23 +34,9 @@
   appendBits/2,
   hash/1,
   hash_block/2,
-  binaryListToIntegerList/1]).
+  binaryListToIntegerList/1,
+  calculateIntermediateHashValue/2]).
 -endif.
-
-temp() ->
-  calculateNextWorkers([24139650742412522452,6908715048216492876,1,2,
-    17491027210091438801,6908714978389719885,5,6]
-    , kConstants(), [
-    1, 2, 3, 4, 5, 6, 7, 8, 9,
-    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-    30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-    40, 41,42, 43, 44, 45, 46, 47, 48, 49,
-    50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
-    60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
-    70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-    80
-  ], 80).
 
 -spec sha512(binary()) -> binary().
 sha512(Message) ->
