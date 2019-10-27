@@ -75,13 +75,6 @@ calculateWorkers(Workers, _, 81) ->
 calculateWorkers(Workers, W, T) ->
  calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
 
--spec binaryListToIntegerList(list(binary())) -> list(integer()).
-binaryListToIntegerList(BinaryList) ->
-  lists:map(fun(Binary) ->
-              <<Integer:64>> = Binary,
-              Integer
-            end, BinaryList).
-
 -spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
 calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
   T1 = H + sum1(E) + ch(E, F, G) + lists:nth(T, K) + lists:nth(T, W),
@@ -97,6 +90,14 @@ calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
     G
   ].
 
+-spec binaryListToIntegerList(list(binary())) -> list(integer()).
+binaryListToIntegerList(BinaryList) ->
+  lists:map(
+    fun(Binary) ->
+      <<Integer:64>> = Binary,
+      Integer
+    end, BinaryList).
+
 -spec calculateFullW(list(binary()), list(binary()), integer()) -> list(integer()).
 calculateFullW(_, W, 81) ->
   binaryListToIntegerList(W);
@@ -106,7 +107,7 @@ calculateFullW(MessageBlock, W, T) ->
     T + 1
   ).
 
--spec calculateWt(binary(), integer(), list(binary())) -> binary().
+-spec calculateWt(list(binary()), integer(), list(binary())) -> binary().
 calculateWt(MessageBlock, T, _) when T =< 15 ->
   lists:nth(T, MessageBlock);
 calculateWt(_, T, W) ->
@@ -119,19 +120,6 @@ calculateWt(_, T, W) ->
     WMinus7 +
     sigma0(WMinus15) +
     WMinus16):64>>.
-
-% Constants defined in chapter 5.3.5
--spec initialWorkers() -> list(binary()).
-initialWorkers() ->
-  [
-    16#6a09e667f3bcc908,
-    16#bb67ae8584caa73b,
-    16#3c6ef372fe94f82b,
-    16#a54ff53a5f1d36f1,
-    16#510e527fade682d1,
-    16#9b05688c2b3e6c1f,
-    16#1f83d9abfb41bd6b,
-    16#5be0cd19137e2179].
 
 -spec rotateLeft(binary(), integer()) -> integer().
 rotateLeft(WordToRotate, RotateAmount) ->
@@ -225,6 +213,19 @@ mod(X, Y) when X < 0 ->
   Y + X rem Y;
 mod(0, _) ->
   0.
+
+% Constants defined in chapter 5.3.5
+-spec initialWorkers() -> list(binary()).
+initialWorkers() ->
+  [
+    16#6a09e667f3bcc908,
+    16#bb67ae8584caa73b,
+    16#3c6ef372fe94f82b,
+    16#a54ff53a5f1d36f1,
+    16#510e527fade682d1,
+    16#9b05688c2b3e6c1f,
+    16#1f83d9abfb41bd6b,
+    16#5be0cd19137e2179].
 
 % Constaints defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
 -spec kConstants() -> list(integer()).
