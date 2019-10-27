@@ -179,17 +179,6 @@ bitshiftRight_test() ->
     ?assertEqual(2#00000000, hasher:shiftRight(2#00001111, 4))
   ].
 
-bitshiftLeft_test() ->
-  [
-    ?assertEqual(2#10101010, hasher:shiftLeft(2#01010101, 1)),
-    ?assertEqual(2#01010100, hasher:shiftLeft(2#01010101, 2)),
-    ?assertEqual(2#10101000, hasher:shiftLeft(2#01010101, 3)),
-    ?assertEqual(2#00011110, hasher:shiftLeft(2#00001111, 1)),
-    ?assertEqual(2#00111100, hasher:shiftLeft(2#00001111, 2)),
-    ?assertEqual(2#01111000, hasher:shiftLeft(2#00001111, 3)),
-    ?assertEqual(2#11110000, hasher:shiftLeft(2#00001111, 4))
-  ].
-
 rotateRight_test() ->
   [
     ?assertEqual(2#1000000000000000000000000000000000000000000000000000000000101010, hasher:rotateRight(2#0000000000000000000000000000000000000000000000000000000001010101, 1)),
@@ -200,18 +189,6 @@ rotateRight_test() ->
     ?assertEqual(2#1100000000000000000000000000000000000000000000000000000000000011, hasher:rotateRight(2#0000000000000000000000000000000000000000000000000000000000001111, 2)),
     ?assertEqual(2#1110000000000000000000000000000000000000000000000000000000000001, hasher:rotateRight(2#0000000000000000000000000000000000000000000000000000000000001111, 3)),
     ?assertEqual(2#1111000000000000000000000000000000000000000000000000000000000000, hasher:rotateRight(2#0000000000000000000000000000000000000000000000000000000000001111, 4))
-  ].
-
-rotateLeft_test() ->
-  [
-    ?assertEqual(2#10101010, hasher:rotateLeft(2#01010101, 1)),
-    ?assertEqual(2#01010101, hasher:rotateLeft(2#01010101, 2)),
-    ?assertEqual(2#10101010, hasher:rotateLeft(2#01010101, 3)),
-    ?assertEqual(2#01010101, hasher:rotateLeft(2#01010101, 4)),
-    ?assertEqual(2#00011110, hasher:rotateLeft(2#00001111, 1)),
-    ?assertEqual(2#00111100, hasher:rotateLeft(2#00001111, 2)),
-    ?assertEqual(2#01111000, hasher:rotateLeft(2#00001111, 3)),
-    ?assertEqual(2#11110000, hasher:rotateLeft(2#00001111, 4))
   ].
 
 ch_test() ->
@@ -250,18 +227,36 @@ sigma1_test() ->
 
 wt_first16rounds_test() ->
   [
-    ?assertEqual(<<40:64>>, hasher:calculateWt([<<40:64>>], 1, [])),
-    ?assertEqual(<<42:64>>, hasher:calculateWt([<<40:64>>, <<42:64>>], 2, [])),
-    ?assertEqual(<<44:64>>, hasher:calculateWt([<<40:64>>, <<44:64>>, <<42:64>>], 2, []))
+    ?assertEqual(<<40:64>>, hasher:calculateMessageSchedulePart([<<40:64>>], 1, [])),
+    ?assertEqual(<<42:64>>, hasher:calculateMessageSchedulePart([<<40:64>>, <<42:64>>], 2, [])),
+    ?assertEqual(<<44:64>>, hasher:calculateMessageSchedulePart([<<40:64>>, <<44:64>>, <<42:64>>], 2, [])),
+    ?assertEqual(<<16:64>>, hasher:calculateMessageSchedulePart([
+      <<1:64>>,
+      <<2:64>>,
+      <<3:64>>,
+      <<4:64>>,
+      <<5:64>>,
+      <<6:64>>,
+      <<7:64>>,
+      <<8:64>>,
+      <<9:64>>,
+      <<10:64>>,
+      <<11:64>>,
+      <<12:64>>,
+      <<13:64>>,
+      <<14:64>>,
+      <<15:64>>,
+      <<16:64>>
+    ], 16, []))
   ].
 
 wt_after16Rounds_test() ->
   [
     ?assertEqual(<<721631471541944654:64>>,
-      hasher:calculateWt(
+      hasher:calculateMessageSchedulePart(
         [<<40:64>>, <<42:64>>],
-        16,
-        [<<54:64>>, % - 16
+        17,
+        [<<>>, <<54:64>>, % - 16
           <<10:64>>, % - 15
           <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<>>, <<35:64>>, % -7
           <<>>, <<>>, <<>>, <<>>, <<30:64>>, % -2
@@ -272,7 +267,7 @@ wt_after16Rounds_test() ->
 fullW_length_test() ->
   [
     ?assertEqual(80,
-      length(hasher:calculateFullW(
+      length(hasher:calculateMessageSchedule(
         [
           <<1:64>>,
           <<2:64>>,
@@ -290,16 +285,14 @@ fullW_length_test() ->
           <<14:64>>,
           <<15:64>>,
           <<16:64>>
-        ],
-        [],
-        1)
+        ])
     ))
   ].
 
 fullW_type_test() ->
   [
     ?assertEqual(true,
-      is_integer(lists:nth(1, hasher:calculateFullW(
+      is_integer(lists:nth(1, hasher:calculateMessageSchedule(
       [
         <<1:64>>,
         <<2:64>>,
@@ -317,9 +310,7 @@ fullW_type_test() ->
         <<14:64>>,
         <<15:64>>,
         <<16:64>>
-      ],
-      [],
-      1)
+      ])
     )))
   ].
 
@@ -329,7 +320,7 @@ fullW_test() ->
       29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,
       54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,
       13909860030343021338,5560114995615766918],
-      hasher:calculateFullW(
+      hasher:calculateMessageSchedule(
         [
           <<1:64>>,
           <<2:64>>,

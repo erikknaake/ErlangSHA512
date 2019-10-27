@@ -13,18 +13,16 @@
   parse/1,
   preprocess/1,
   splitToNByteBlocks/2,
-  rotateLeft/2,
   rotateRight/2,
   shiftRight/2,
-  shiftLeft/2,
   ch/3,
   maj/3,
   sum0/1,
   sum1/1,
   sigma0/1,
   sigma1/1,
-  calculateWt/3,
-  calculateFullW/3,
+  calculateMessageSchedulePart/3,
+  calculateMessageSchedule/3,
   digest/2,
   calculateWorkers/4,
   initialWorkers/0,
@@ -35,8 +33,14 @@
   hash/1,
   hash_block/2,
   binaryListToIntegerList/1,
-  calculateIntermediateHashValue/2]).
+  calculateIntermediateHashValue/2,
+  calculateMessageSchedule/1,
+  calculateWorkers/2]).
 -endif.
+
+% Makes sure additions are done mod 2^64
+add64(X, Y) ->
+  (X + Y) band 16#FFFFFFFFFFFFFFFF.
 
 -spec sha512(binary()) -> binary().
 sha512(Message) ->
@@ -57,7 +61,7 @@ sha512AndPrint(Message) ->
 hash(Message) ->
   digest(preprocess(Message), initialWorkers()).
 
--spec digest(list(list(binary())), list(binary())) -> binary().
+-spec digest(list(list(binary())), list(integer())) -> binary().
 digest(Message, InitialWorkers) ->
       lists:foldl(fun hash_block/2, InitialWorkers, Message).
 
@@ -75,28 +79,34 @@ appendBits(Value, Accumulator, BitSize) ->
   <<Accumulator/big-binary, BinaryValue/big-binary>>.
 
 -spec hash_block(list(binary()), list(binary())) -> list(binary()).
-hash_block(MessageBlock, Workers) ->
-  calculateWorkers(Workers, [], calculateFullW(MessageBlock, [], 1), 1).
+hash_block(MessageBlock, PreviousWorkers) ->
+  calculateWorkers(PreviousWorkers, calculateMessageSchedule(MessageBlock)).
 
-calculateIntermediateHashValue([A, B, C, D, E, F, G, H], [H0, H1, H2, H3, H4, H5, H6, H7]) ->
-  [A + H0, B + H1, C + H2, D + H3, E + H4, F + H5, G + H6, H + H7].
+-spec calculateIntermediateHashValue(list(integer()), list(integer())) -> list(integer()).
+calculateIntermediateHashValue(Workers, HashValues) ->
+  lists:map(fun({HashValue, Worker}) -> add64(HashValue, Worker) end, lists:zip(HashValues, Workers)).
 
+-spec calculateWorkers(list(binary()), list(integer())) -> list(binary()).
+calculateWorkers(InitialWorkers, MessageSchedule) ->
+  calculateWorkers(InitialWorkers, [], MessageSchedule, 1).
 -spec calculateWorkers(list(binary()), list(binary()), list(integer()), integer()) -> list(binary()).
 calculateWorkers(Workers, PreviousWorkers, _, 81) ->
+%%  io:format("Final Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PreviousWorkers]),
   calculateIntermediateHashValue(Workers, PreviousWorkers);
-calculateWorkers(Workers, _, W, T) ->
- calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), Workers, W, T + 1).
+calculateWorkers(Workers, PrevWorkers, MessageSchedule, T) ->
+%%  io:format("Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PrevWorkers]),
+ calculateWorkers(calculateNextWorkers(Workers, kConstants(), MessageSchedule, T), Workers, MessageSchedule, T + 1).
 
 -spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
 calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
-  T1 = H + sum1(E) + ch(E, F, G) + lists:nth(T, K) + lists:nth(T, W),
-  T2 = sum0(A) + maj(A, B, C),
+  T1 = add64(add64(add64(add64(H, sum1(E)), ch(E, F, G)), lists:nth(T, K)), lists:nth(T, W)),
+  T2 = add64(sum0(A), maj(A, B, C)),
   [
-    T1 + T2,
+    add64(T1, T2),
     A,
     B,
     C,
-    D + T1,
+    add64(D, T1),
     E,
     F,
     G
@@ -110,32 +120,34 @@ binaryListToIntegerList(BinaryList) ->
       Integer
     end, BinaryList).
 
--spec calculateFullW(list(binary()), list(binary()), integer()) -> list(integer()).
-calculateFullW(_, W, 81) ->
+-spec calculateMessageSchedule(list(binary())) -> list(integer()).
+calculateMessageSchedule(MessageBlock) ->
+  calculateMessageSchedule(MessageBlock, [], 1).
+-spec calculateMessageSchedule(list(binary()), list(binary()), integer()) -> list(integer()).
+calculateMessageSchedule(_, W, 81) ->
   binaryListToIntegerList(W);
-calculateFullW(MessageBlock, W, T) ->
-  calculateFullW(MessageBlock,
-    W ++ [calculateWt(MessageBlock, T, W)],
+calculateMessageSchedule(MessageBlock, W, T) ->
+  calculateMessageSchedule(MessageBlock,
+    W ++ [calculateMessageSchedulePart(MessageBlock, T, W)],
     T + 1
   ).
 
--spec calculateWt(list(binary()), integer(), list(binary())) -> binary().
-calculateWt(MessageBlock, T, _) when T =< 15 ->
+-spec calculateMessageSchedulePart(list(binary()), integer(), list(binary())) -> binary().
+calculateMessageSchedulePart(MessageBlock, T, _) when T =< 16 ->
   lists:nth(T, MessageBlock);
-calculateWt(_, T, W) ->
+calculateMessageSchedulePart(_, T, W) ->
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
   <<WMinus2:64>> = lists:nth(T - 1, W),
   <<WMinus7:64>> = lists:nth(T - 6, W),
   <<WMinus15:64>> = lists:nth(T - 14, W),
   <<WMinus16:64>> = lists:nth(T - 15, W),
-  <<(sigma1(WMinus2) +
-    WMinus7 +
-    sigma0(WMinus15) +
-    WMinus16):64>>.
-
--spec rotateLeft(binary(), integer()) -> integer().
-rotateLeft(WordToRotate, RotateAmount) ->
-  shiftLeft(WordToRotate, RotateAmount) bor shiftRight(WordToRotate, bit_size(<<WordToRotate>>) - RotateAmount).
+  <<(add64(
+      add64(
+        add64(
+          sigma1(WMinus2),
+          WMinus7),
+        sigma0(WMinus15)),
+      WMinus16)):64>>.
 
 -spec rotateRight(integer(), integer()) -> integer().
 rotateRight(V, Count) ->
@@ -148,14 +160,9 @@ rotateRight(V, Count) ->
 shiftRight(WordToShift, ShiftAmount) ->
   WordToShift bsr ShiftAmount.
 
--spec shiftLeft(binary(), integer()) -> binary().
-shiftLeft(WordToShift, ShiftAmount) ->
-  <<Result>> = <<(WordToShift bsl ShiftAmount):(bit_size(<<WordToShift>>))>>,
-  Result.
-
 -spec ch(integer(), integer(), integer()) -> integer().
 ch(X, Y, Z) ->
-  (X band Y) bxor (bnot X band Z).
+  (X band Y) bxor ((bnot X) band Z).
 
 -spec maj(integer(), integer(), integer()) -> integer().
 maj(X, Y, Z) ->
@@ -229,7 +236,7 @@ mod(0, _) ->
   0.
 
 % Constants defined in chapter 5.3.5
--spec initialWorkers() -> list(binary()).
+-spec initialWorkers() -> list(integer()).
 initialWorkers() ->
   [
     16#6a09e667f3bcc908,
