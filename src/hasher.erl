@@ -1,7 +1,7 @@
 -module(hasher).
 -author("erikknaake").
 
--export([sha512/1]).
+-export([sha512/1, printBinaryAsHex/2, sha512AndPrint/1]).
 
 % export all functions when we are running in testmode, this makes it easy to unit test smaller units of work
 -ifdef(TEST).
@@ -44,6 +44,15 @@ sha512(Message) ->
   io:format("A: ~p~n", [A]),
   A.
 
+-spec printBinaryAsHex(binary(), integer()) -> atom().
+printBinaryAsHex(Binary, BitSize) ->
+  <<Integer:BitSize>> = Binary,
+  io:format("~.16#~n", [Integer]).
+
+-spec sha512AndPrint(binary()) -> atom().
+sha512AndPrint(Message) ->
+  printBinaryAsHex(sha512(Message), 512).
+
 -spec hash(binary()) -> list(binary()).
 hash(Message) ->
   digest(preprocess(Message), initialWorkers()).
@@ -67,7 +76,6 @@ appendBits(Value, Accumulator, BitSize) ->
 
 -spec hash_block(list(binary()), list(binary())) -> list(binary()).
 hash_block(MessageBlock, Workers) ->
-  io:format("hashblock: ~p~n", [Workers]),
   calculateWorkers(Workers, [], calculateFullW(MessageBlock, [], 1), 1).
 
 calculateIntermediateHashValue([A, B, C, D, E, F, G, H], [H0, H1, H2, H3, H4, H5, H6, H7]) ->
@@ -145,9 +153,11 @@ shiftLeft(WordToShift, ShiftAmount) ->
   <<Result>> = <<(WordToShift bsl ShiftAmount):(bit_size(<<WordToShift>>))>>,
   Result.
 
+-spec ch(integer(), integer(), integer()) -> integer().
 ch(X, Y, Z) ->
   (X band Y) bxor (bnot X band Z).
 
+-spec maj(integer(), integer(), integer()) -> integer().
 maj(X, Y, Z) ->
   (X band Y) bxor (X band Z) bxor (Y band Z).
 
