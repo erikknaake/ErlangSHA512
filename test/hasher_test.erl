@@ -276,6 +276,33 @@ fullW_length_test() ->
     ))
   ].
 
+fullW_type_test() ->
+  [
+    ?assertEqual(true,
+      is_integer(lists:nth(1, hasher:calculateFullW(
+      [
+        <<1:64>>,
+        <<2:64>>,
+        <<3:64>>,
+        <<4:64>>,
+        <<5:64>>,
+        <<6:64>>,
+        <<7:64>>,
+        <<8:64>>,
+        <<9:64>>,
+        <<10:64>>,
+        <<11:64>>,
+        <<12:64>>,
+        <<13:64>>,
+        <<14:64>>,
+        <<15:64>>,
+        <<16:64>>
+      ],
+      [],
+      1)
+    )))
+  ].
+
 calculate_workers_last_iter_test() ->
   [
     ?assertEqual([16, 31], hasher:calculateWorkers([16, 31], hasher:kConstants(), 80))
@@ -308,8 +335,23 @@ compress_test() ->
       7:64>>,
       hasher:compress([4800678499904433735, 1, 2, 3, 4800678430077660744, 5, 6, 7]))
   ].
-%%
-%%digest_test() ->
+
+binaryListToIntegerList_test() ->
+  [
+    ?assertEqual([1, 2, 3], hasher:binaryListToIntegerList([<<1:64>>, <<2:64>>, <<3:64>>]))
+  ].
+
+binaryListToIntegerListType_test() ->
+  [
+    ?assertEqual(true, is_integer(lists:nth(1, hasher:binaryListToIntegerList([<<1:64>>, <<2:64>>, <<3:64>>]))))
+  ].
+
+digest_test() ->
+  [
+    ?assertEqual([], hasher:digest(hasher:preprocess(<<"Hello">>), hasher:initialWorkers()))
+  ].
+
+%%hash_test() ->
 %%  [
-%%    ?assertEqual([], hasher:digest(hasher:preprocess(<<"Hello">>), []))
+%%
 %%  ].

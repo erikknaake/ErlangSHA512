@@ -24,77 +24,64 @@
   sigma0/1,
   sigma1/1,
   calculateWt/3,
-  calculateFullW/3
-  , digest/2,
+  calculateFullW/3,
+  digest/2,
   calculateWorkers/3,
-  initialWorkers/0, kConstants/0, calculateNextWorkers/4, compress/1, appendBits/2]).
+  initialWorkers/0,
+  kConstants/0,
+  calculateNextWorkers/4,
+  compress/1,
+  appendBits/2,
+  hash/1, hash_round/2, binaryListToIntegerList/1]).
 -endif.
 
 sha512() ->
-  digest(preprocess(<<"Hello">>), initialWorkers()).
-%hashRound(preprocess(Message), initialHashValue(), nil, 79).
+  compress(hash(<<"Hello">>)).
 
-%%hashRound(I, Message) when I =< length(Message) ->
-%%  W = calculateW().
-%%
-%%hashBlocks([]) ->
-%%  ok.
-%%
-%%hashBlocks([H|T]) ->
-%%  ok.
-
-%%-spec extend(list(binary())) -> binary().
-%%extend([], _) ->
-%%  terminate;
-%%extend(Message, I) when I == 1 ->
-%%  calculateWt(lists:nth(I, Message), ).
-
-%%-spec digest(list(binary()), integer(), list(binary())) -> binary().
-%%digest(Message, I, Workers) when I == length(Message) ->
-%%  Workers;
-%%digest([MessageBlock | Message], I, Workers) ->
-%%  calculateFullW(MessageBlock, [], 0),
-%%  digest(Message, I + 1, Workers).
+-spec hash(binary()) -> list(binary()).
+hash(Message) ->
+  digest(preprocess(Message), initialWorkers()).
 
 -spec digest(list(list(binary())), list(binary())) -> binary().
 digest(Message, InitialWorkers) ->
-%%  io:format("Message: ~p~n", [Message]),
-  State = {InitialWorkers},
-  %lists:map(
-   %   fun(Message) ->
-        lists:foldl(
-          expand(Message, State),
-            State,
-            Message)
-    %  end,
-  %  Message).
-        .
-
+%%  lists:map(
+%%    fun(MessageBlock) ->
+      lists:foldl(fun hash_round/2, InitialWorkers, Message)
+%%    end,
+%%    Message).
+      .
 -spec compress(list(integer())) -> integer().
 compress(Workers) ->
-  lists:foldl(fun hasher:appendBits/2, <<>>, Workers).
+  lists:foldl(fun appendBits/2, <<>>, Workers).
 
-
+-spec appendBits(integer(), binary()) -> binary().
 appendBits(Value, Accumulator) ->
   appendBits(Value, Accumulator, 64).
+
+-spec appendBits(integer(), binary(), integer()) -> binary().
 appendBits(Value, Accumulator, BitSize) ->
   BinaryValue = <<Value:BitSize>>,
   <<Accumulator/big-binary, BinaryValue/big-binary>>.
 
--spec expand(list(binary()), list(binary())) -> {binary(), list(binary())}.
-expand(MessageBlock, PreviousWorkers) ->
-%%  io:format("Message block: ~p~n", [MessageBlock]),
-  W = calculateFullW(MessageBlock, [], 0),
-  NewWorkers = calculateWorkers(PreviousWorkers, W, 0),
-  {W, NewWorkers}.
+-spec hash_round(list(binary()), list(binary())) -> list(binary()).
+hash_round(MessageBlock, PreviousWorkers) ->
+  W = calculateFullW(MessageBlock, [], 1),
+  calculateWorkers(binaryListToIntegerList(PreviousWorkers), W, 1).
 
--spec calculateWorkers(list(binary()), list(binary()), integer()) -> list(binary()).
+-spec calculateWorkers(list(binary()), list(integer()), integer()) -> list(binary()).
 calculateWorkers(Workers, _, 80) ->
   Workers;
 calculateWorkers(Workers, W, T) ->
  calculateWorkers(calculateNextWorkers(Workers, kConstants(), W, T), W, T + 1).
 
--spec calculateNextWorkers(list(), list(), list(), integer()) -> list().
+-spec binaryListToIntegerList(list(binary())) -> list(integer()).
+binaryListToIntegerList(BinaryList) ->
+  lists:map(fun(Binary) ->
+              <<Integer:64>> = Binary,
+              Integer
+            end, BinaryList).
+
+-spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
 calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
   T1 = H + sum1(E) + ch(E, F, G) + lists:nth(T, K) + lists:nth(T, W),
   T2 = sum0(A) + maj(A, B, C),
@@ -109,9 +96,9 @@ calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
     G
   ].
 
--spec calculateFullW(list(binary()), list(binary()), integer()) -> list(binary()).
+-spec calculateFullW(list(binary()), list(binary()), integer()) -> list(integer()).
 calculateFullW(_, W, 81) ->
-  W;
+  binaryListToIntegerList(W);
 calculateFullW(MessageBlock, W, T) ->
   calculateFullW(MessageBlock,
     W ++ [calculateWt(MessageBlock, T, W)],
@@ -132,7 +119,7 @@ calculateWt(_, T, W) ->
     sigma0(WMinus15) +
     WMinus16):64>>.
 
--spec initialWorkers() -> list(binary).
+-spec initialWorkers() -> list(binary()).
 initialWorkers() ->
   [<<16#22312194FC2BF72C:64>>, <<16#9F555FA3C84C64C2:64>>,
     <<16#2393B86B6F53B151:64>>, <<16#963877195940EABD:64>>,
