@@ -27,7 +27,6 @@
   calculateWorkers/2,
   initialWorkers/0,
   kConstants/0,
-  calculateNextWorkers/4,
   compress/1,
   appendBits/2,
   hash/1,
@@ -35,7 +34,7 @@
   binaryListToIntegerList/1,
   calculateIntermediateHashValue/2,
   calculateMessageSchedule/1,
-  calculateWorkers/2, binaryListToBinary/1]).
+  binaryListToBinary/1]).
 -endif.
 
 % Makes sure additions are done mod 2^64
@@ -44,9 +43,7 @@ add64(X, Y) ->
 
 -spec sha512(binary()) -> binary().
 sha512(Message) ->
-  A = compress(hash(Message)),
-  io:format("A: ~p~n", [A]),
-  A.
+  compress(hash(Message)).
 
 -spec printBinaryAsHex(binary(), integer()) -> atom().
 printBinaryAsHex(Binary, BitSize) ->
@@ -66,7 +63,9 @@ digest(Message, InitialWorkers) ->
       lists:foldl(
         fun(MessageBlock, PreviousWorkers) ->
           hash_block(MessageBlock, PreviousWorkers)
-        end, InitialWorkers, Message).
+        end,
+        InitialWorkers,
+        Message).
 
 -spec compress(list(integer())) -> integer().
 compress(Workers) ->
@@ -89,11 +88,13 @@ hash_block(MessageBlock, PreviousWorkers) ->
 calculateIntermediateHashValue(Workers, HashValues) ->
   lists:map(fun({HashValue, Worker}) -> add64(HashValue, Worker) end, lists:zip(HashValues, Workers)).
 
-%%-spec calculateWorkers(list(binary()), list(integer())) -> list(binary()).
+-spec calculateWorkers(list(integer()), binary()) -> list(integer()).
 calculateWorkers(InitialWorkers, MessageSchedule) ->
   sha512_loop(MessageSchedule, InitialWorkers, InitialWorkers, 0).
-sha512_loop(_W, Hashes, Next, 80) ->
-  lists:map(fun({X, Y}) -> add64(X, Y) end, lists:zip(Hashes, Next));
+
+-spec sha512_loop(binary(), list(integer()), list(integer()), integer()) -> list(integer()).
+sha512_loop(_, Hashes, Next, 80) ->
+  calculateIntermediateHashValue(Hashes, Next);
 sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], Count) ->
   S0 = rotateRight(A, 28) bxor rotateRight(A, 34) bxor rotateRight(A, 39),
   Maj = (A band B) bxor (A band C) bxor (B band C),
@@ -103,33 +104,9 @@ sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], Count) ->
   Offset = Count * 8,
   <<_:Offset/binary, K:64/big-unsigned, _/binary>> = kConstants(),
   <<_:Offset/binary, Wval:64/big-unsigned, _/binary>> = <<W/binary>>,
-  io:format("Loop A: ~p, B: ~p, C: ~p, D: ~p, E: ~p, F: ~p, G: ~p, H: ~p~n", [A, B, C, D, E, F, G, H]),
   T1 = (H + S1 + Ch + K + Wval) band 16#FFFFFFFFFFFFFFFF,
   sha512_loop(W, Hashes, [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
     Count+1).
-
--spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
-calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, Count) ->
-  S0 = rotateRight(A, 28) bxor rotateRight(A, 34) bxor rotateRight(A, 39),
-  Maj = (A band B) bxor (A band C) bxor (B band C),
-  T2 = add64(S0, Maj),
-  S1 = rotateRight(E, 14) bxor rotateRight(E, 18) bxor rotateRight(E, 41),
-  Ch = (E band F) bxor (((bnot E) + 1 + 16#FFFFFFFFFFFFFFFF) band G),
-  Offset = Count * 8,
-  KVal = lists:nth(Count, K),
-  <<_:Offset/binary, Wval:64/big-unsigned, _/binary>> = <<W/binary>>,
-  io:format("Loop A: ~p, B: ~p, C: ~p, D: ~p, E: ~p, F: ~p, G: ~p, H: ~p~n", [A, B, C, D, E, F, G, H]),
-  T1 = (H + S1 + Ch + KVal + Wval) band 16#FFFFFFFFFFFFFFFF,
-  [
-    add64(T1, T2),
-    A,
-    B,
-    C,
-    add64(D, T1),
-    E,
-    F,
-    G
-  ].
 
 -spec binaryListToIntegerList(list(binary())) -> list(integer()).
 binaryListToIntegerList(BinaryList) ->
@@ -278,7 +255,7 @@ initialWorkers() ->
     16#1f83d9abfb41bd6b,
     16#5be0cd19137e2179].
 
-% Constaints defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
+% Constants defined in standard https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf Chapter 4.2.3
 -spec kConstants() -> binary().
 kConstants() ->
   <<16#428A2F98D728AE22:64/big-unsigned,
