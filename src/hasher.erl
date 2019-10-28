@@ -24,7 +24,7 @@
   calculateMessageSchedulePart/3,
   calculateMessageSchedule/3,
   digest/2,
-  calculateWorkers/4,
+  calculateWorkers/2,
   initialWorkers/0,
   kConstants/0,
   calculateNextWorkers/4,
@@ -35,12 +35,95 @@
   binaryListToIntegerList/1,
   calculateIntermediateHashValue/2,
   calculateMessageSchedule/1,
-  calculateWorkers/2]).
+  calculateWorkers/2, binaryListToBinary/1]).
 -endif.
+
+-define(K512, <<16#428A2F98D728AE22:64/big-unsigned,
+  16#7137449123EF65CD:64/big-unsigned,
+  16#B5C0FBCFEC4D3B2F:64/big-unsigned,
+  16#E9B5DBA58189DBBC:64/big-unsigned,
+  16#3956C25BF348B538:64/big-unsigned,
+  16#59F111F1B605D019:64/big-unsigned,
+  16#923F82A4AF194F9B:64/big-unsigned,
+  16#AB1C5ED5DA6D8118:64/big-unsigned,
+  16#D807AA98A3030242:64/big-unsigned,
+  16#12835B0145706FBE:64/big-unsigned,
+  16#243185BE4EE4B28C:64/big-unsigned,
+  16#550C7DC3D5FFB4E2:64/big-unsigned,
+  16#72BE5D74F27B896F:64/big-unsigned,
+  16#80DEB1FE3B1696B1:64/big-unsigned,
+  16#9BDC06A725C71235:64/big-unsigned,
+  16#C19BF174CF692694:64/big-unsigned,
+  16#E49B69C19EF14AD2:64/big-unsigned,
+  16#EFBE4786384F25E3:64/big-unsigned,
+  16#0FC19DC68B8CD5B5:64/big-unsigned,
+  16#240CA1CC77AC9C65:64/big-unsigned,
+  16#2DE92C6F592B0275:64/big-unsigned,
+  16#4A7484AA6EA6E483:64/big-unsigned,
+  16#5CB0A9DCBD41FBD4:64/big-unsigned,
+  16#76F988DA831153B5:64/big-unsigned,
+  16#983E5152EE66DFAB:64/big-unsigned,
+  16#A831C66D2DB43210:64/big-unsigned,
+  16#B00327C898FB213F:64/big-unsigned,
+  16#BF597FC7BEEF0EE4:64/big-unsigned,
+  16#C6E00BF33DA88FC2:64/big-unsigned,
+  16#D5A79147930AA725:64/big-unsigned,
+  16#06CA6351E003826F:64/big-unsigned,
+  16#142929670A0E6E70:64/big-unsigned,
+  16#27B70A8546D22FFC:64/big-unsigned,
+  16#2E1B21385C26C926:64/big-unsigned,
+  16#4D2C6DFC5AC42AED:64/big-unsigned,
+  16#53380D139D95B3DF:64/big-unsigned,
+  16#650A73548BAF63DE:64/big-unsigned,
+  16#766A0ABB3C77B2A8:64/big-unsigned,
+  16#81C2C92E47EDAEE6:64/big-unsigned,
+  16#92722C851482353B:64/big-unsigned,
+  16#A2BFE8A14CF10364:64/big-unsigned,
+  16#A81A664BBC423001:64/big-unsigned,
+  16#C24B8B70D0F89791:64/big-unsigned,
+  16#C76C51A30654BE30:64/big-unsigned,
+  16#D192E819D6EF5218:64/big-unsigned,
+  16#D69906245565A910:64/big-unsigned,
+  16#F40E35855771202A:64/big-unsigned,
+  16#106AA07032BBD1B8:64/big-unsigned,
+  16#19A4C116B8D2D0C8:64/big-unsigned,
+  16#1E376C085141AB53:64/big-unsigned,
+  16#2748774CDF8EEB99:64/big-unsigned,
+  16#34B0BCB5E19B48A8:64/big-unsigned,
+  16#391C0CB3C5C95A63:64/big-unsigned,
+  16#4ED8AA4AE3418ACB:64/big-unsigned,
+  16#5B9CCA4F7763E373:64/big-unsigned,
+  16#682E6FF3D6B2B8A3:64/big-unsigned,
+  16#748F82EE5DEFB2FC:64/big-unsigned,
+  16#78A5636F43172F60:64/big-unsigned,
+  16#84C87814A1F0AB72:64/big-unsigned,
+  16#8CC702081A6439EC:64/big-unsigned,
+  16#90BEFFFA23631E28:64/big-unsigned,
+  16#A4506CEBDE82BDE9:64/big-unsigned,
+  16#BEF9A3F7B2C67915:64/big-unsigned,
+  16#C67178F2E372532B:64/big-unsigned,
+  16#CA273ECEEA26619C:64/big-unsigned,
+  16#D186B8C721C0C207:64/big-unsigned,
+  16#EADA7DD6CDE0EB1E:64/big-unsigned,
+  16#F57D4F7FEE6ED178:64/big-unsigned,
+  16#06F067AA72176FBA:64/big-unsigned,
+  16#0A637DC5A2C898A6:64/big-unsigned,
+  16#113F9804BEF90DAE:64/big-unsigned,
+  16#1B710B35131C471B:64/big-unsigned,
+  16#28DB77F523047D84:64/big-unsigned,
+  16#32CAAB7B40C72493:64/big-unsigned,
+  16#3C9EBE0A15C9BEBC:64/big-unsigned,
+  16#431D67C49C100D4C:64/big-unsigned,
+  16#4CC5D4BECB3E42B6:64/big-unsigned,
+  16#597F299CFC657E2A:64/big-unsigned,
+  16#5FCB6FAB3AD6FAEC:64/big-unsigned,
+  16#6C44198C4A475817:64/big-unsigned>>).
+
 
 % Makes sure additions are done mod 2^64
 add64(X, Y) ->
   (X + Y) band 16#FFFFFFFFFFFFFFFF.
+-define(ADD64(X, Y), (X + Y) band 16#FFFFFFFFFFFFFFFF).
 
 -spec sha512(binary()) -> binary().
 sha512(Message) ->
@@ -63,7 +146,12 @@ hash(Message) ->
 
 -spec digest(list(list(binary())), list(integer())) -> binary().
 digest(Message, InitialWorkers) ->
-      lists:foldl(fun hash_block/2, InitialWorkers, Message).
+      lists:foldl(
+        fun(MessageBlock, PreviousWorkers) ->
+%%          io:format("PreviousWorkers: ~p~n", [integerListToBinaryList(PreviousWorkers)]),
+%%          io:format("Messageblock: ~p~n", [MessageBlock]),
+          hash_block(MessageBlock, PreviousWorkers)
+        end, InitialWorkers, Message).
 
 -spec compress(list(integer())) -> integer().
 compress(Workers) ->
@@ -86,21 +174,61 @@ hash_block(MessageBlock, PreviousWorkers) ->
 calculateIntermediateHashValue(Workers, HashValues) ->
   lists:map(fun({HashValue, Worker}) -> add64(HashValue, Worker) end, lists:zip(HashValues, Workers)).
 
--spec calculateWorkers(list(binary()), list(integer())) -> list(binary()).
+%%-spec calculateWorkers(list(binary()), list(integer())) -> list(binary()).
 calculateWorkers(InitialWorkers, MessageSchedule) ->
-  calculateWorkers(InitialWorkers, [], MessageSchedule, 1).
--spec calculateWorkers(list(binary()), list(binary()), list(integer()), integer()) -> list(binary()).
-calculateWorkers(Workers, PreviousWorkers, _, 81) ->
-%%  io:format("Final Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PreviousWorkers]),
-  calculateIntermediateHashValue(Workers, PreviousWorkers);
-calculateWorkers(Workers, PrevWorkers, MessageSchedule, T) ->
-%%  io:format("Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PrevWorkers]),
- calculateWorkers(calculateNextWorkers(Workers, kConstants(), MessageSchedule, T), Workers, MessageSchedule, T + 1).
+  sha512_loop(MessageSchedule, InitialWorkers, InitialWorkers, 0).
+sha512_loop(_W, Hashes, Next, 80) ->
+  lists:map(fun({X, Y}) -> ?ADD64(X, Y) end, lists:zip(Hashes, Next));
+sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], Count) ->
+%%  io:format("Loop W: ~p~n", [W]),
+  S0 = rotateRight(A, 28) bxor rotateRight(A, 34) bxor rotateRight(A, 39),
+  Maj = (A band B) bxor (A band C) bxor (B band C),
+  T2 = ?ADD64(S0, Maj),
+  S1 = rotateRight(E, 14) bxor rotateRight(E, 18) bxor rotateRight(E, 41),
+  Ch = (E band F) bxor (((bnot E) + 1 + 16#FFFFFFFFFFFFFFFF) band G),
+  Offset = Count * 8,
+  <<_:Offset/binary, K:64/big-unsigned, _/binary>> = ?K512,
+  <<_:Offset/binary, Wval:64/big-unsigned, _/binary>> = <<W/binary>>,
+  io:format("Loop A: ~p, B: ~p, C: ~p, D: ~p, E: ~p, F: ~p, G: ~p, H: ~p~n", [A, B, C, D, E, F, G, H]),
+  T1 = (H + S1 + Ch + K + Wval) band 16#FFFFFFFFFFFFFFFF,
+  sha512_loop(W, Hashes, [?ADD64(T1, T2), A, B, C, ?ADD64(D, T1), E, F, G],
+    Count+1).
+%%-spec calculateWorkers(list(binary()), list(binary()), list(integer()), integer()) -> list(binary()).
+%%calculateWorkers(Workers, PreviousWorkers, _, 80) ->
+%%%%  io:format("Final Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PreviousWorkers]),
+%%  calculateIntermediateHashValue(Workers, PreviousWorkers);
+%%calculateWorkers(Workers, PrevWorkers, MessageSchedule, T) ->
+%%%%  io:format("Workers: ~p~nPreviousWorkers: ~p~n", [Workers, PrevWorkers]),
+%% calculateWorkers(calculateNextWorkers(Workers, kConstants(), MessageSchedule, T), Workers, MessageSchedule, T + 1).
 
 -spec calculateNextWorkers(list(integer()), list(integer()), list(integer()), integer()) -> list().
-calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, T) ->
-  T1 = add64(add64(add64(add64(H, sum1(E)), ch(E, F, G)), lists:nth(T, K)), lists:nth(T, W)),
-  T2 = add64(sum0(A), maj(A, B, C)),
+calculateNextWorkers([A, B, C, D, E, F, G, H], K, W, Count) ->
+%%  Offset = T * 8,
+%%  <<_:Offset/binary, Wt:64/big-unsigned, _/binary>> = <<W/binary>>,
+%%  Kt = lists:nth(T, K),
+%%  T1 = add64(add64(add64(add64(H, sum1(E)), ch(E, F, G)), Kt), Wt),
+%%  T2 = add64(sum0(A), maj(A, B, C)),
+%%  [
+%%    add64(T1, T2),
+%%    A,
+%%    B,
+%%    C,
+%%    add64(D, T1),
+%%    E,
+%%    F,
+%%    G
+%%  ].
+%%  io:format("Loop W: ~p~n", [W]),
+  S0 = rotateRight(A, 28) bxor rotateRight(A, 34) bxor rotateRight(A, 39),
+  Maj = (A band B) bxor (A band C) bxor (B band C),
+  T2 = add64(S0, Maj),
+  S1 = rotateRight(E, 14) bxor rotateRight(E, 18) bxor rotateRight(E, 41),
+  Ch = (E band F) bxor (((bnot E) + 1 + 16#FFFFFFFFFFFFFFFF) band G),
+  Offset = Count * 8,
+  KVal = lists:nth(Count, K),
+  <<_:Offset/binary, Wval:64/big-unsigned, _/binary>> = <<W/binary>>,
+  io:format("Loop A: ~p, B: ~p, C: ~p, D: ~p, E: ~p, F: ~p, G: ~p, H: ~p~n", [A, B, C, D, E, F, G, H]),
+  T1 = (H + S1 + Ch + KVal + Wval) band 16#FFFFFFFFFFFFFFFF,
   [
     add64(T1, T2),
     A,
@@ -120,34 +248,82 @@ binaryListToIntegerList(BinaryList) ->
       Integer
     end, BinaryList).
 
+-spec integerListToBinaryList(list(integer())) -> list(binary()).
+integerListToBinaryList(IntegerList) ->
+  lists:map(
+    fun(Integer) ->
+      Binary = <<Integer:64>>,
+      Binary
+    end, IntegerList).
+
+
 -spec calculateMessageSchedule(list(binary())) -> list(integer()).
 calculateMessageSchedule(MessageBlock) ->
   calculateMessageSchedule(MessageBlock, [], 1).
 -spec calculateMessageSchedule(list(binary()), list(binary()), integer()) -> list(integer()).
 calculateMessageSchedule(_, W, 81) ->
   binaryListToIntegerList(W);
-calculateMessageSchedule(MessageBlock, W, T) ->
-  calculateMessageSchedule(MessageBlock,
-    W ++ [calculateMessageSchedulePart(MessageBlock, T, W)],
-    T + 1
-  ).
+calculateMessageSchedule(MessageBlock, _, _) ->
+%%  calculateMessageSchedule(MessageBlock,
+%%  io:format("Message block schedule: ~p~n", [MessageBlock]),
+%%  io:format("Message block schedule as binary: ~p~n", [binaryListToBinary(MessageBlock)]),
+  calculateMessageSchedulePart(MessageBlock, 16, binaryListToBinary(MessageBlock)).
+%%    T + 1
+%%  ).
 
+-spec binaryListToBinary(list(binary())) -> binary().
+binaryListToBinary(MessageBlock) ->
+  lists:foldl(
+    fun(Binary, Result) ->
+      concatBinary(Result, Binary)
+    end, <<>>, MessageBlock).
+
+-spec concatBinary(binary(), binary()) -> binary().
+concatBinary(Bin1, Bin2) ->
+  <<Bin1/binary, Bin2/binary>>.
+
+%%first16(_, W, 16) ->
+%%  W;
+%%first16(MessageBlock, W, T) ->
+%%  first16(MessageBlock, W ++ lists:nth(T, MessageBlock), T + 1).
 -spec calculateMessageSchedulePart(list(binary()), integer(), list(binary())) -> binary().
-calculateMessageSchedulePart(MessageBlock, T, _) when T =< 16 ->
-  lists:nth(T, MessageBlock);
+%%calculateMessageSchedulePart(MessageBlock, T, _) when T =< 16 ->
+%%  lists:nth(T, MessageBlock);
 calculateMessageSchedulePart(_, T, W) ->
   %% Note erlang lists are indexed from 1, zo instead of -2, -7, -15 and -16 we have to use one less
-  <<WMinus2:64>> = lists:nth(T - 1, W),
-  <<WMinus7:64>> = lists:nth(T - 6, W),
-  <<WMinus15:64>> = lists:nth(T - 14, W),
-  <<WMinus16:64>> = lists:nth(T - 15, W),
-  <<(add64(
-      add64(
-        add64(
-          sigma1(WMinus2),
-          WMinus7),
-        sigma0(WMinus15)),
-      WMinus16)):64>>.
+  sha512_extend(W, T).
+%%  <<WMinus2:64>> = lists:nth(T - 1, W),
+%%  <<WMinus7:64>> = lists:nth(T - 6, W),
+%%  <<WMinus15:64>> = lists:nth(T - 14, W),
+%%  <<WMinus16:64>> = lists:nth(T - 15, W),
+%%  S0 = rotateRight(WMinus2, 1) bxor rotateRight(WMinus2, 8) bxor (WMinus2 bsr 7),
+%%  S1 = rotateRight(WMinus15, 19) bxor rotateRight(WMinus15, 61) bxor (WMinus15 bsr 6),
+%%  Next = (WMinus16 + S0 + WMinus7 + S1) band 16#FFFFFFFFFFFFFFFF,
+%%  <<Next:64>>.
+%%%%  <<(add64(
+%%%%      add64(
+%%%%        add64(
+%%%%          sigma1(WMinus2),
+%%%%          WMinus7),
+%%%%        sigma0(WMinus15)),
+%%%%      WMinus16)):64>>.
+
+sha512_extend(W, 80) ->
+  W;
+sha512_extend(W, Count) ->
+  Off1 = (Count - 15) * 8,
+  Off2 = (Count - 2) * 8 - Off1 - 8,
+  <<_:Off1/binary, Word1:64/big-unsigned,
+    _:Off2/binary, Word2:64/big-unsigned, _/binary>> = <<W/binary>>,
+  S0 = rotateRight(Word1, 1) bxor rotateRight(Word1, 8) bxor (Word1 bsr 7),
+  S1 = rotateRight(Word2, 19) bxor rotateRight(Word2, 61) bxor (Word2 bsr 6),
+  Off3 = (Count - 16) * 8,
+  Off4 = (Count - 7) * 8 - Off3 - 8,
+  <<_:Off3/binary, W16:64/big-unsigned,
+    _:Off4/binary, W7:64/big-unsigned, _/binary>> = <<W/binary>>,
+  Next = (W16 + S0 + W7 + S1) band 16#FFFFFFFFFFFFFFFF,
+  sha512_extend(<<W/binary, Next:64/big-unsigned>>, Count+1).
+
 
 -spec rotateRight(integer(), integer()) -> integer().
 rotateRight(V, Count) ->
