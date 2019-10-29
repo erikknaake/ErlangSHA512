@@ -21,7 +21,6 @@
   sum1/1,
   sigma0/1,
   sigma1/1,
-  calculateMessageSchedulePart/3,
   calculateMessageSchedule/3,
   digest/2,
   calculateWorkers/2,
@@ -36,6 +35,9 @@
   calculateMessageSchedule/1,
   binaryListToBinary/1, getBitsFromOffset/3]).
 -endif.
+
+-define(WORD_SIZE, 64).
+-define(FINAL_BIT_SIZE, 512).
 
 % Makes sure additions are done mod 2^64
 add64(X, Y) ->
@@ -52,7 +54,7 @@ printBinaryAsHex(Binary, BitSize) ->
 
 -spec sha512AndPrint(binary()) -> atom().
 sha512AndPrint(Message) ->
-  printBinaryAsHex(sha512(Message), 512).
+  printBinaryAsHex(sha512(Message), ?FINAL_BIT_SIZE).
 
 -spec hash(binary()) -> list(binary()).
 hash(Message) ->
@@ -73,7 +75,7 @@ compress(Workers) ->
 
 -spec appendBits(integer(), binary()) -> binary().
 appendBits(Value, Accumulator) ->
-  appendBits(Value, Accumulator, 64).
+  appendBits(Value, Accumulator, ?WORD_SIZE).
 
 -spec appendBits(integer(), binary(), integer()) -> binary().
 appendBits(Value, Accumulator, BitSize) ->
@@ -102,8 +104,8 @@ sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], T) ->
   S1 = sum1(E),
   Ch = ch(E, F, G),
   Offset = T * 8,
-  K = getBitsFromOffset(kConstants(), Offset, 64),
-  Wval = getBitsFromOffset(W, Offset, 64),
+  K = getBitsFromOffset(kConstants(), Offset, ?WORD_SIZE),
+  Wval = getBitsFromOffset(W, Offset, ?WORD_SIZE),
   T1 = add64(H + S1 + Ch + K, Wval),
   sha512_loop(W, Hashes, [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
     T + 1).
@@ -117,7 +119,7 @@ getBitsFromOffset(Binary, Offset, NumberOfBits) ->
 binaryListToIntegerList(BinaryList) ->
   lists:map(
     fun(Binary) ->
-      <<Integer:64>> = Binary,
+      <<Integer:?WORD_SIZE>> = Binary,
       Integer
     end, BinaryList).
 
@@ -128,7 +130,8 @@ calculateMessageSchedule(MessageBlock) ->
 calculateMessageSchedule(_, W, 81) ->
   binaryListToIntegerList(W);
 calculateMessageSchedule(MessageBlock, _, _) ->
-  calculateMessageSchedulePart(MessageBlock, 16, binaryListToBinary(MessageBlock)).
+  sha512_extend(binaryListToBinary(MessageBlock), 16).
+
 -spec binaryListToBinary(list(binary())) -> binary().
 binaryListToBinary(MessageBlock) ->
   lists:foldl(
@@ -140,33 +143,32 @@ binaryListToBinary(MessageBlock) ->
 concatBinary(Bin1, Bin2) ->
   <<Bin1/binary, Bin2/binary>>.
 
--spec calculateMessageSchedulePart(list(binary()), integer(), list(binary())) -> binary().
-calculateMessageSchedulePart(_, T, W) ->
-  sha512_extend(W, T).
-
-sha512_extend(W, 80) ->
-  W;
-sha512_extend(W, Count) ->
-  Off1 = (Count - 15) * 8,
-  Off2 = (Count - 2) * 8 - Off1 - 8,
-  <<_:Off1/binary, Word1:64/big-unsigned,
-    _:Off2/binary, Word2:64/big-unsigned, _/binary>> = <<W/binary>>,
-  S0 = rotateRight(Word1, 1) bxor rotateRight(Word1, 8) bxor (Word1 bsr 7),
-  S1 = rotateRight(Word2, 19) bxor rotateRight(Word2, 61) bxor (Word2 bsr 6),
-  Off3 = (Count - 16) * 8,
-  Off4 = (Count - 7) * 8 - Off3 - 8,
-  <<_:Off3/binary, W16:64/big-unsigned,
-    _:Off4/binary, W7:64/big-unsigned, _/binary>> = <<W/binary>>,
-  Next = (W16 + S0 + W7 + S1) band 16#FFFFFFFFFFFFFFFF,
-  sha512_extend(<<W/binary, Next:64/big-unsigned>>, Count+1).
+sha512_extend(MessageSchedule, 80) ->
+  MessageSchedule;
+sha512_extend(MessageSchedule, T) ->
+  Off1 = (T - 15) * 8,
+  Off2 = (T - 2) * 8 - Off1 - 8,
+  <<_:Off1/binary, Word1:?WORD_SIZE/big-unsigned,
+    _:Off2/binary, Word2:?WORD_SIZE/big-unsigned, _/binary>> = <<MessageSchedule/binary>>,
+  S0 = sigma0(Word1),
+  S1 = sigma1(Word2),
+  Off3 = (T - 16) * 8,
+  Off4 = (T - 7) * 8 - Off3 - 8,
+  <<_:Off3/binary, W16:?WORD_SIZE/big-unsigned,
+    _:Off4/binary, W7:?WORD_SIZE/big-unsigned, _/binary>> = <<MessageSchedule/binary>>,
+  Next = add64(W16 + S0 + W7, S1),
+  sha512_extend(<<MessageSchedule/binary, Next:?WORD_SIZE/big-unsigned>>, T +1).
 
 
 -spec rotateRight(integer(), integer()) -> integer().
-rotateRight(V, Count) ->
-  Rest = 64 - Count,
-  <<Top:Rest/unsigned, Bottom:Count/unsigned>> = <<V:64/big-unsigned>>,
-  <<New:64/big-unsigned>> = <<Bottom:Count/unsigned, Top:Rest/unsigned>>,
+rotateRight(Word, Count) ->
+  Rest = ?WORD_SIZE - Count,
+  <<Top:Rest/unsigned, Bottom:Count/unsigned>> = <<Word:?WORD_SIZE/big-unsigned>>,
+  <<New:?WORD_SIZE/big-unsigned>> = <<Bottom:Count/unsigned, Top:Rest/unsigned>>,
   New.
+
+
+
 
 -spec shiftRight(binary(), integer()) -> binary().
 shiftRight(WordToShift, ShiftAmount) ->
