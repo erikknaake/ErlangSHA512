@@ -33,7 +33,10 @@
   binaryListToIntegerList/1,
   calculateIntermediateHashValue/2,
   calculateMessageSchedule/1,
-  binaryListToBinary/1, getBitsFromOffset/3, getBitsFromByteOffset/3, getWordFromByteOffset/2]).
+  binaryListToBinary/1,
+  getBitsFromOffset/3,
+  getBitsFromByteOffset/3,
+  getWordFromByteOffset/2]).
 -endif.
 
 -define(WORD_SIZE, 64).
@@ -88,25 +91,31 @@ hash_block(MessageBlock, PreviousWorkers) ->
 
 -spec calculateIntermediateHashValue(list(integer()), list(integer())) -> list(integer()).
 calculateIntermediateHashValue(Workers, HashValues) ->
-  lists:map(fun({HashValue, Worker}) -> add64(HashValue, Worker) end, lists:zip(HashValues, Workers)).
+  lists:map(
+    fun({HashValue, Worker}) ->
+      add64(HashValue, Worker)
+    end,
+    lists:zip(HashValues, Workers)).
 
 -spec calculateWorkers(list(integer()), binary()) -> list(integer()).
 calculateWorkers(InitialWorkers, MessageSchedule) ->
-  sha512_loop(MessageSchedule, InitialWorkers, InitialWorkers, 0).
+  calculateWorkers(MessageSchedule, InitialWorkers, InitialWorkers, 0).
 
--spec sha512_loop(binary(), list(integer()), list(integer()), integer()) -> list(integer()).
-sha512_loop(_, Hashes, Next, 80) ->
-  calculateIntermediateHashValue(Hashes, Next);
-sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], T) ->
+-spec calculateWorkers(binary(), list(integer()), list(integer()), integer()) -> list(integer()).
+calculateWorkers(_, Workers, Next, 80) ->
+  calculateIntermediateHashValue(Workers, Next);
+calculateWorkers(MessageSchedule, Workers, [A, B, C, D, E, F, G, H], T) ->
   S0 = sum0(A),
   Maj = maj(A, B, C),
   T2 = add64(S0, Maj),
   S1 = sum1(E),
   Ch = ch(E, F, G),
   K = getWordFromByteOffset(kConstants(), T),
-  Wval = getWordFromByteOffset(W, T),
-  T1 = add64(H + S1 + Ch + K, Wval),
-  sha512_loop(W, Hashes, [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
+  Wt = getWordFromByteOffset(MessageSchedule, T),
+  T1 = add64(H + S1 + Ch + K, Wt),
+  calculateWorkers(MessageSchedule,
+    Workers,
+    [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
     T + 1).
 
 -spec getBitsFromOffset(binary(), integer(), integer()) -> integer().
@@ -138,7 +147,7 @@ calculateMessageSchedule(MessageBlock) ->
 calculateMessageSchedule(_, W, 81) ->
   binaryListToIntegerList(W);
 calculateMessageSchedule(MessageBlock, _, _) ->
-  sha512_extend(binaryListToBinary(MessageBlock), 16).
+  extend(binaryListToBinary(MessageBlock), 16).
 
 -spec binaryListToBinary(list(binary())) -> binary().
 binaryListToBinary(MessageBlock) ->
@@ -151,9 +160,9 @@ binaryListToBinary(MessageBlock) ->
 concatBinary(Bin1, Bin2) ->
   <<Bin1/binary, Bin2/binary>>.
 
-sha512_extend(MessageSchedule, 80) ->
+extend(MessageSchedule, 80) ->
   MessageSchedule;
-sha512_extend(MessageSchedule, T) ->
+extend(MessageSchedule, T) ->
   W2 = getWordFromByteOffset(MessageSchedule, T - 2),
   W7 = getWordFromByteOffset(MessageSchedule, T - 7),
   W15 = getWordFromByteOffset(MessageSchedule, T - 15),
@@ -161,7 +170,7 @@ sha512_extend(MessageSchedule, T) ->
   S0 = sigma0(W15),
   S1 = sigma1(W2),
   Next = add64(W16 + S0 + W7, S1),
-  sha512_extend(concatBinary(MessageSchedule, <<Next:?WORD_SIZE/big-unsigned>>), T + 1).
+  extend(concatBinary(MessageSchedule, <<Next:?WORD_SIZE/big-unsigned>>), T + 1).
 
 
 -spec rotateRight(integer(), integer()) -> integer().
@@ -170,9 +179,6 @@ rotateRight(Word, Count) ->
   <<Top:Rest/unsigned, Bottom:Count/unsigned>> = <<Word:?WORD_SIZE/big-unsigned>>,
   <<New:?WORD_SIZE/big-unsigned>> = <<Bottom:Count/unsigned, Top:Rest/unsigned>>,
   New.
-
-
-
 
 -spec shiftRight(binary(), integer()) -> binary().
 shiftRight(WordToShift, ShiftAmount) ->
@@ -210,14 +216,14 @@ preprocess(<<Message/binary-unsigned-big>>) ->
 parse(<<PaddedMessage/binary-unsigned-big>>) ->
   [splitToNByteBlocks(X, 8) || X <- splitToNByteBlocks(PaddedMessage, 128)].
 
-splitToNByteBlocks(<<Bin/binary-unsigned-big>>, LenPart) ->
-  lists:reverse(splitToNByteBlocksInternal(Bin, LenPart, [])).
+splitToNByteBlocks(<<Bin/binary-unsigned-big>>, NumberOfBytes) ->
+  lists:reverse(splitToNByteBlocksInternal(Bin, NumberOfBytes, [])).
 
-splitToNByteBlocksInternal(<<Bin/binary-unsigned-big>>, LenPart, Acc) when byte_size(Bin) =< LenPart ->
+splitToNByteBlocksInternal(<<Bin/binary-unsigned-big>>, NumberOfbytes, Acc) when byte_size(Bin) =< NumberOfbytes ->
   [Bin | Acc];
-splitToNByteBlocksInternal(Bin, LenPart, Acc) ->
-  <<Part:LenPart/binary, Rest/binary>> = Bin,
-  splitToNByteBlocksInternal(Rest, LenPart, [Part | Acc]).
+splitToNByteBlocksInternal(Bin, NumberOfBytes, Acc) ->
+  <<Part:NumberOfBytes/binary, Rest/binary>> = Bin,
+  splitToNByteBlocksInternal(Rest, NumberOfBytes, [Part | Acc]).
 
 % Padds the message
 padd(<<MessageToPadd/binary-unsigned-big>>) ->
