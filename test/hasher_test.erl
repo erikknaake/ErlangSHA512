@@ -306,9 +306,13 @@ sha512_length_test() ->
     ?assertEqual(512, bit_size(hasher:sha512(<<"Hello">>)))
   ].
 
+% Expected output generated with https://emn178.github.io/online-tools/sha512.html
 sha512_test() ->
   [
-    ?assertEqual(<<16#3615F80C9D293ED7402687F94B22D58E529B8CC7916F8FAC7FDDF7FBD5AF4CF777D3D795A7A00A16BF7E7F3FB9561EE9BAAE480DA9FE7A18769E71886B03F315:512>>, hasher:sha512(<<"Hello">>))
+    ?assertEqual(<<16#3615F80C9D293ED7402687F94B22D58E529B8CC7916F8FAC7FDDF7FBD5AF4CF777D3D795A7A00A16BF7E7F3FB9561EE9BAAE480DA9FE7A18769E71886B03F315:512>>, hasher:sha512(<<"Hello">>)),
+    ?assertEqual(<<16#cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e:512>>, hasher:sha512(<<"">>)),
+    ?assertEqual(<<16#5040597cc773cd7723d45c9d35240e698baa4520972705aa14f0966a5ad3bf982442aa5cbc2b9e77eb0b993a16370d167bb72481f6ef7f97194d935e18dbb8d9:512>>, hasher:sha512(<<"The quick fox jumps over the lazy fox">>)),
+    ?assertEqual(<<16#7f79190f9d0b58ab636ff27867e76abb220cafa7a435325e3c0a04ad2d134b9c7970521553c3978588da67b5c00fd6d9704b48b65c10b7c53b55db0bfa462648:512>>, hasher:sha512(<<"This is some very lengthy message that definitely should exceed the limit that can be stored into a single block, so that we can test if the foldl part of the code works correctly. ">>))
   ].
 
 binaryListToBinary_test() ->
