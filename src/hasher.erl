@@ -34,7 +34,7 @@
   binaryListToIntegerList/1,
   calculateIntermediateHashValue/2,
   calculateMessageSchedule/1,
-  binaryListToBinary/1]).
+  binaryListToBinary/1, getBitsFromOffset/3]).
 -endif.
 
 % Makes sure additions are done mod 2^64
@@ -95,18 +95,23 @@ calculateWorkers(InitialWorkers, MessageSchedule) ->
 -spec sha512_loop(binary(), list(integer()), list(integer()), integer()) -> list(integer()).
 sha512_loop(_, Hashes, Next, 80) ->
   calculateIntermediateHashValue(Hashes, Next);
-sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], Count) ->
-  S0 = rotateRight(A, 28) bxor rotateRight(A, 34) bxor rotateRight(A, 39),
-  Maj = (A band B) bxor (A band C) bxor (B band C),
+sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], T) ->
+  S0 = sum0(A),
+  Maj = maj(A, B, C),
   T2 = add64(S0, Maj),
-  S1 = rotateRight(E, 14) bxor rotateRight(E, 18) bxor rotateRight(E, 41),
-  Ch = (E band F) bxor (((bnot E) + 1 + 16#FFFFFFFFFFFFFFFF) band G),
-  Offset = Count * 8,
-  <<_:Offset/binary, K:64/big-unsigned, _/binary>> = kConstants(),
-  <<_:Offset/binary, Wval:64/big-unsigned, _/binary>> = <<W/binary>>,
-  T1 = (H + S1 + Ch + K + Wval) band 16#FFFFFFFFFFFFFFFF,
+  S1 = sum1(E),
+  Ch = ch(E, F, G),
+  Offset = T * 8,
+  K = getBitsFromOffset(kConstants(), Offset, 64),
+  Wval = getBitsFromOffset(W, Offset, 64),
+  T1 = add64(H + S1 + Ch + K, Wval),
   sha512_loop(W, Hashes, [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
-    Count+1).
+    T + 1).
+
+-spec getBitsFromOffset(binary(), integer(), integer()) -> integer().
+getBitsFromOffset(Binary, Offset, NumberOfBits) ->
+  <<_:Offset/binary, Result:NumberOfBits/big-unsigned, _/binary>> = Binary,
+  Result.
 
 -spec binaryListToIntegerList(list(binary())) -> list(integer()).
 binaryListToIntegerList(BinaryList) ->
