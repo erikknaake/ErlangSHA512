@@ -301,11 +301,6 @@ hex_and_binary_strings_should_equal_test() ->
     ?assertEqual(<<16#48656c6c6f:40>>, <<"Hello">>)
   ].
 
-%%calculate_intermediate_hashresult_test() ->
-%%  [
-%%    ?assertEqual([2, 4, 9, 2, 4, 6, 8, 10], hasher:calculateIntermediateHashValue([1, 2, 3, 1, 2, 3, 4, 5], [1, 2, 6, 1, 2, 3, 4, 5]))
-%%  ].
-
 sha512_length_test() ->
   [
     ?assertEqual(512, bit_size(hasher:sha512(<<"Hello">>)))
