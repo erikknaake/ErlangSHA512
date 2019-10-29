@@ -33,7 +33,7 @@
   binaryListToIntegerList/1,
   calculateIntermediateHashValue/2,
   calculateMessageSchedule/1,
-  binaryListToBinary/1, getBitsFromOffset/3]).
+  binaryListToBinary/1, getBitsFromOffset/3, getBitsFromByteOffset/3, getWordFromByteOffset/2]).
 -endif.
 
 -define(WORD_SIZE, 64).
@@ -103,9 +103,8 @@ sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], T) ->
   T2 = add64(S0, Maj),
   S1 = sum1(E),
   Ch = ch(E, F, G),
-  Offset = T * 8,
-  K = getBitsFromOffset(kConstants(), Offset, ?WORD_SIZE),
-  Wval = getBitsFromOffset(W, Offset, ?WORD_SIZE),
+  K = getWordFromByteOffset(kConstants(), T),
+  Wval = getWordFromByteOffset(W, T),
   T1 = add64(H + S1 + Ch + K, Wval),
   sha512_loop(W, Hashes, [add64(T1, T2), A, B, C, add64(D, T1), E, F, G],
     T + 1).
@@ -114,6 +113,15 @@ sha512_loop(W, Hashes, [A, B, C, D, E, F, G, H], T) ->
 getBitsFromOffset(Binary, Offset, NumberOfBits) ->
   <<_:Offset/binary, Result:NumberOfBits/big-unsigned, _/binary>> = Binary,
   Result.
+
+
+-spec getWordFromByteOffset(binary(), integer()) -> integer().
+getWordFromByteOffset(Binary, ByteOffset) ->
+  getBitsFromByteOffset(Binary, ByteOffset, ?WORD_SIZE).
+
+-spec getBitsFromByteOffset(binary(), integer(), integer()) -> integer().
+getBitsFromByteOffset(Binary, ByteOffset, NumberOfBits) ->
+  getBitsFromOffset(Binary, ByteOffset * 8, NumberOfBits).
 
 -spec binaryListToIntegerList(list(binary())) -> list(integer()).
 binaryListToIntegerList(BinaryList) ->
@@ -146,18 +154,14 @@ concatBinary(Bin1, Bin2) ->
 sha512_extend(MessageSchedule, 80) ->
   MessageSchedule;
 sha512_extend(MessageSchedule, T) ->
-  Off1 = (T - 15) * 8,
-  Off2 = (T - 2) * 8 - Off1 - 8,
-  <<_:Off1/binary, Word1:?WORD_SIZE/big-unsigned,
-    _:Off2/binary, Word2:?WORD_SIZE/big-unsigned, _/binary>> = <<MessageSchedule/binary>>,
-  S0 = sigma0(Word1),
-  S1 = sigma1(Word2),
-  Off3 = (T - 16) * 8,
-  Off4 = (T - 7) * 8 - Off3 - 8,
-  <<_:Off3/binary, W16:?WORD_SIZE/big-unsigned,
-    _:Off4/binary, W7:?WORD_SIZE/big-unsigned, _/binary>> = <<MessageSchedule/binary>>,
+  W2 = getWordFromByteOffset(MessageSchedule, T - 2),
+  W7 = getWordFromByteOffset(MessageSchedule, T - 7),
+  W15 = getWordFromByteOffset(MessageSchedule, T - 15),
+  W16 = getWordFromByteOffset(MessageSchedule, T - 16),
+  S0 = sigma0(W15),
+  S1 = sigma1(W2),
   Next = add64(W16 + S0 + W7, S1),
-  sha512_extend(<<MessageSchedule/binary, Next:?WORD_SIZE/big-unsigned>>, T +1).
+  sha512_extend(concatBinary(MessageSchedule, <<Next:?WORD_SIZE/big-unsigned>>), T + 1).
 
 
 -spec rotateRight(integer(), integer()) -> integer().
