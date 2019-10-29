@@ -646,6 +646,8 @@ Tijdens het werken met Erlang ben ik een aantal 'gekke' dingen tegengekomen:
 2. Lists zijn niet 0 indexed, maar beginnen bij 1.
 3. Op een bepaald punt stopped eunit met het door hebben dat de tests zijn [geupdate](https://github.com/erlang/rebar3/issues/1998), hij blijft dan hetzelfde uitvoeren als de laatste uitvoering,
 op te lossen met ```rm -rf _build```, dit is feitelijk een clean stap. Omdat je niet altijd door hebt dat je tests niet meer updaten verhoogd dit de kans op bugs enorm.
+4. Wanneer je met een bitstring of een binary werkt, is het belangrijk dat je het exacte aantal bits vermeld dat je wild gebruiken,
+omdat Erlang anders het minimum pakt en dat is niet voor alle algoritmes wenselijk.
 
 ### Conlcusie
 De challenge die ik heb gemaakt was uitdagend, omdat het pittig was om te debuggen, dit gaat samen met twee van de grootste valkuilen van Erlang:
